@@ -6,6 +6,6 @@
     "dev": "web-ext run --target=chromium --ignore-files 'demo/**' 'node_modules/**' '.github/**' 'package.json' 'package-lock.json' '.gitignore' 'README.md'"
   },
   "devDependencies": {
-    "web-ext": "^8.3.0"
+    "web-ext": "^10.4.0"
   }
 }
