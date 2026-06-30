@@ -1,0 +1,11 @@
+{
+  "name": "ask-in-page",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "web-ext run --target=chromium --ignore-files 'demo/**' 'node_modules/**' '.github/**' 'package.json' 'package-lock.json' '.gitignore' 'README.md'"
+  },
+  "devDependencies": {
+    "web-ext": "^8.3.0"
+  }
+}

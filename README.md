@@ -43,6 +43,34 @@ Base URL 填到 `/v1` 即可，插件会自动补全 `/chat/completions`。
 | 按 `T` | 翻译选中内容 |
 | 右键回答面板 | 复制 / 重新生成 |
 
+## Demo
+
+在线预览（无需安装插件）：**https://yuhhhy.github.io/ask-in-page/demo/**
+
+Demo 页面使用模拟 Chrome API 运行，默认显示 Demo 回答。如果你本地跑了 Ollama，可以在 Demo 页面的设置面板里填入 `http://localhost:11434/v1`，即可实时调用真实模型。
+
+## 本地开发
+
+**热重载**（改代码自动重载插件）：
+
+```bash
+npm install
+npm run dev
+```
+
+`npm run dev` 会用 [web-ext](https://github.com/mozilla/web-ext) 启动一个独立 Chrome 窗口，加载本插件。每次保存文件后插件自动重载，无需手动刷新。
+
+**Demo 页面**（在浏览器里预览 UI）：
+
+直接用浏览器打开 `demo/index.html`，或者用任意静态服务器：
+
+```bash
+npx serve . -l 3000
+# 访问 http://localhost:3000/demo/
+```
+
+**GitHub Pages**：向 `main` 分支推送后，GitHub Actions 自动部署 Demo 页面。首次使用需要在仓库 Settings → Pages → Source 中选择 **GitHub Actions**。
+
 ## 权限说明
 
 - `storage`：保存你的 API Key 和设置
