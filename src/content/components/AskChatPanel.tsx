@@ -37,7 +37,8 @@ export function AskChatPanel({ state, actions }: AskChatPanelProps) {
   }, [state.content, state.scrollTop, state.wasNearBottom]);
 
   const position = actions.getPanelPosition(state);
-  const style: CSSProperties = { left: position.left, top: position.top };
+  const size = actions.getPanelSize();
+  const style: CSSProperties = { left: position.left, top: position.top, width: size.width, height: size.height };
 
   function beginDrag(event: ReactPointerEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest('button') || !panelRef.current) return;

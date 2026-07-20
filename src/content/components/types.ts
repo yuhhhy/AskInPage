@@ -1,4 +1,4 @@
-import type { Intent, PopoverState, Position, SelectionTarget } from '../types';
+import type { Intent, PanelSize, PopoverState, Position, SelectionTarget } from '../types';
 
 export interface AskChatActions {
   startLookup: (id: string, intent: Intent) => void;
@@ -12,4 +12,5 @@ export interface AskChatActions {
   handlePanelSelection: (id: string) => void;
   getTriggerPosition: (target: SelectionTarget) => Position;
   getPanelPosition: (state: PopoverState) => Position;
+  getPanelSize: () => PanelSize;
 }

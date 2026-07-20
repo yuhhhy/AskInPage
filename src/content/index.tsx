@@ -1,8 +1,9 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { DEFAULT_OPTIONS } from '../shared/options';
+import type { TriggerPlacement } from '../shared/options';
 import { AskChatApp, type AskChatActions } from './components/AskChatApp';
 import { THINKING_STATUS_INTERVAL_MS, THINKING_STATUS_MESSAGES } from './constants';
-import type { Intent, PanelStatus, PopoverState, Position, SelectionContext, SelectionTarget, ViewportRect } from './types';
+import type { Intent, PanelSize, PanelStatus, PopoverState, Position, SelectionContext, SelectionTarget, ViewportRect } from './types';
 
 const ASK_CHAT_ROOT_ID = 'ask-chat-selection-root';
 const MAX_CONTEXT_CHARS = 5000;
@@ -31,6 +32,11 @@ let reactRoot: Root | null = null;
 let nextPopoverId = 1;
 let suppressNextKeyupSelection = false;
 let extensionEnabled = DEFAULT_OPTIONS.enabled;
+let layoutPreferences = {
+  triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
+  width: DEFAULT_OPTIONS.panelWidth,
+  height: DEFAULT_OPTIONS.panelHeight
+};
 const popovers = new Map<string, PopoverState>();
 const observedShadowRoots = new Set<ShadowRoot>();
 const shadowObservers = new Map<ShadowRoot, MutationObserver>();
@@ -88,19 +94,29 @@ function getSelectionRect(range: Range): ViewportRect {
   };
 }
 
-function clampPosition(rect, mode) {
-  const margin = 12;
-  const width = mode === 'panel' ? 360 : 260;
-  const height = mode === 'panel' ? 220 : 42;
-  const preferredLeft = rect.right + 8;
-  const preferredTop = rect.bottom + 8;
-  const left = preferredLeft + width > window.innerWidth - margin
-    ? Math.max(margin, rect.right - width)
-    : Math.max(margin, preferredLeft);
-  const top = preferredTop + height > window.innerHeight - margin
-    ? Math.max(margin, rect.bottom - height)
-    : Math.max(margin, preferredTop);
-  return { left, top };
+function getConfiguredPanelSize(): PanelSize {
+  return {
+    width: Math.min(layoutPreferences.width, Math.max(240, window.innerWidth - 16)),
+    height: Math.min(layoutPreferences.height, Math.max(180, window.innerHeight - 16))
+  };
+}
+
+function getPreferredTriggerPosition(selectionRect: ViewportRect): Position {
+  const margin = 8;
+  const gap = 8;
+  const size = { width: 260, height: 42 };
+  const maxLeft = Math.max(margin, window.innerWidth - size.width - margin);
+  const maxTop = Math.max(margin, window.innerHeight - size.height - margin);
+  const isLeft = layoutPreferences.triggerPlacement.endsWith('left');
+  const isTop = layoutPreferences.triggerPlacement.startsWith('top');
+  return {
+    left: Math.min(maxLeft, Math.max(margin, isLeft
+      ? selectionRect.left - size.width - gap
+      : selectionRect.right + gap)),
+    top: Math.min(maxTop, Math.max(margin, isTop
+      ? selectionRect.top - size.height - gap
+      : selectionRect.bottom + gap))
+  };
 }
 
 function normalizeText(text) {
@@ -594,8 +610,9 @@ const askChatActions: AskChatActions = {
     state.wasNearBottom = wasNearBottom;
   },
   handlePanelSelection,
-  getTriggerPosition: (target) => clampPosition(target.rect, 'button'),
-  getPanelPosition: (state) => state.panelPosition || clampPosition(state.target.rect, 'panel')
+  getTriggerPosition: (target) => getPreferredTriggerPosition(target.rect),
+  getPanelPosition: (state) => state.panelPosition || getPreferredTriggerPosition(state.target.rect),
+  getPanelSize: getConfiguredPanelSize
 };
 
 function createPopover(target: SelectionTarget): string {
@@ -711,7 +728,7 @@ function renderPanel(id: string, { status = 'loading', content = '', error = '' 
   state.mode = 'panel';
   state.status = status;
   state.error = error;
-  state.panelPosition ||= clampPosition(state.target.rect, 'panel');
+  state.panelPosition ||= getPreferredTriggerPosition(state.target.rect);
   if (content) state.content = content;
   syncUi();
 }
@@ -953,15 +970,59 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
-chrome.storage.sync.get({ enabled: DEFAULT_OPTIONS.enabled }).then((stored) => {
-  extensionEnabled = Boolean(stored.enabled);
-  if (!extensionEnabled) clearUi();
-});
+const CONTENT_PREFERENCE_DEFAULTS = {
+  enabled: DEFAULT_OPTIONS.enabled,
+  triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
+  panelWidth: DEFAULT_OPTIONS.panelWidth,
+  panelHeight: DEFAULT_OPTIONS.panelHeight
+};
+
+function clampStoredNumber(value: unknown, fallback: number, min: number, max: number) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
+
+function normalizeTriggerPlacement(value: unknown): TriggerPlacement {
+  const placement = String(value || '');
+  return ['top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(placement)
+    ? placement as TriggerPlacement
+    : DEFAULT_OPTIONS.triggerPlacement;
+}
+
+function applyContentPreferences(stored: Record<string, unknown>) {
+  const wasEnabled = extensionEnabled;
+  extensionEnabled = stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled);
+  const nextLayoutPreferences = {
+    triggerPlacement: normalizeTriggerPlacement(stored.triggerPlacement),
+    width: Math.round(clampStoredNumber(stored.panelWidth, DEFAULT_OPTIONS.panelWidth, 300, 720)),
+    height: Math.round(clampStoredNumber(stored.panelHeight, DEFAULT_OPTIONS.panelHeight, 220, 720))
+  };
+  const triggerPositionChanged = nextLayoutPreferences.triggerPlacement !== layoutPreferences.triggerPlacement;
+  const panelSizeChanged = nextLayoutPreferences.width !== layoutPreferences.width
+    || nextLayoutPreferences.height !== layoutPreferences.height;
+  layoutPreferences = nextLayoutPreferences;
+
+  if (!extensionEnabled) {
+    clearUi();
+  } else if ((triggerPositionChanged || panelSizeChanged) && popovers.size) {
+    if (panelSizeChanged) {
+      for (const state of popovers.values()) {
+        if (state.mode === 'panel') state.panelPosition = null;
+      }
+    }
+    syncUi();
+  } else if (!wasEnabled && extensionEnabled) {
+    syncUi();
+  }
+}
+
+chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'sync' || !changes.enabled) return;
-  extensionEnabled = Boolean(changes.enabled.newValue);
-  if (!extensionEnabled) clearUi();
+  if (areaName !== 'sync') return;
+  const relevantKeys = ['enabled', 'triggerPlacement', 'panelWidth', 'panelHeight'];
+  if (!relevantKeys.some(key => changes[key])) return;
+  chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
 });
 
 startShadowRootDiscovery();

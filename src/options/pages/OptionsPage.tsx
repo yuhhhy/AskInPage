@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { AnswerPreferenceFields } from '../components/AnswerPreferenceFields';
 import { ModelConnectionFields } from '../components/ModelConnectionFields';
+import { PanelPreferenceFields } from '../components/PanelPreferenceFields';
 import { SettingsHeader } from '../components/SettingsHeader';
 import { SettingsSection } from '../components/SettingsSection';
 import { useExtensionOptions } from '../hooks/useExtensionOptions';
@@ -32,8 +33,11 @@ export function OptionsPage() {
           <AnswerPreferenceFields options={options} onChange={updateOption} />
         </SettingsSection>
 
+        <SettingsSection index="03" title="弹窗布局" titleId="panel-title">
+          <PanelPreferenceFields options={options} onChange={updateOption} />
+        </SettingsSection>
+
         <button className="save-button" type="submit">保存设置</button>
-        <p className="hint">支持多个 OpenAI-compatible 服务。Base URL 可填写到 /v1，也可以填写完整的 /chat/completions；API Key 仅保存在浏览器同步存储中。</p>
         <div className="status" role="status" aria-live="polite">{status}</div>
       </form>
     </main>

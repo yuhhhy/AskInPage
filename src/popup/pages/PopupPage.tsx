@@ -1,9 +1,9 @@
-import { ChevronRight, Power, Settings } from 'lucide-react';
+import { Power, Settings } from 'lucide-react';
 import { ModelSelector } from '../components/ModelSelector';
 import { SupportNotice } from '../components/SupportNotice';
 import { usePopupState } from '../hooks/usePopupState';
 
-const GITHUB_URL = 'https://github.com/yuhhhy';
+const GITHUB_URL = 'https://github.com/yuhhhy/AskInPage';
 
 export function PopupPage() {
   const { enabled, supported, connections, activeConnectionId, version, toggleEnabled, selectModel } = usePopupState();
@@ -23,12 +23,6 @@ export function PopupPage() {
       <div className="popup-content">
         <SupportNotice supported={supported} enabled={enabled} />
         <ModelSelector connections={connections} activeConnectionId={activeConnectionId} disabled={!enabled} onChange={selectModel} />
-
-        <button className="settings-row" type="button" onClick={() => chrome.runtime.openOptionsPage()}>
-          <Settings className="settings-row-icon" size={21} aria-hidden="true" />
-          <div><strong>设置</strong><small>管理 API、模型列表和回答偏好</small></div>
-          <ChevronRight className="settings-row-arrow" size={20} aria-hidden="true" />
-        </button>
       </div>
 
       <footer className="popup-footer">

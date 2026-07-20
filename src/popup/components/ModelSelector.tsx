@@ -22,7 +22,6 @@ export function ModelSelector({ connections, activeConnectionId, disabled, onCha
       <div className="section-title">
         <div>
           <h2 id="model-title">当前模型</h2>
-          <p>{activeConnection.name} · 用于下一次提问</p>
         </div>
         <span>{modelCount} 个可选</span>
       </div>

@@ -106,8 +106,8 @@
 .ask-chat-trigger button:hover { background: #6544c5; }
 
 .ask-chat-panel {
-  width: min(360px, calc(100vw - 24px));
-  max-height: min(360px, calc(100vh - 24px));
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -214,7 +214,8 @@
 }
 
 .ask-chat-body {
-  min-height: 72px;
+  flex: 1;
+  min-height: 0;
   padding: 8px 12px 12px;
   overflow: auto;
   color: #3f4652;

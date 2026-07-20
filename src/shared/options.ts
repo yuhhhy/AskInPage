@@ -7,6 +7,8 @@ export interface ApiConnection {
   models: string[];
 }
 
+export type TriggerPlacement = 'top-left' | 'bottom-left' | 'top-right' | 'bottom-right';
+
 export interface ExtensionOptions {
   enabled: boolean;
   connections: ApiConnection[];
@@ -14,6 +16,9 @@ export interface ExtensionOptions {
   temperature: number;
   enableAnswerFormatInstruction: boolean;
   answerFormatInstruction: string;
+  triggerPlacement: TriggerPlacement;
+  panelWidth: number;
+  panelHeight: number;
 }
 
 export const DEFAULT_CONNECTION: ApiConnection = Object.freeze({
@@ -31,7 +36,10 @@ export const DEFAULT_OPTIONS: ExtensionOptions = Object.freeze({
   activeConnectionId: DEFAULT_CONNECTION.id,
   temperature: 0.2,
   enableAnswerFormatInstruction: true,
-  answerFormatInstruction: ''
+  answerFormatInstruction: '',
+  triggerPlacement: 'bottom-right',
+  panelWidth: 360,
+  panelHeight: 360
 });
 
 export const STORAGE_DEFAULTS: Record<string, unknown> = {
@@ -41,6 +49,9 @@ export const STORAGE_DEFAULTS: Record<string, unknown> = {
   temperature: DEFAULT_OPTIONS.temperature,
   enableAnswerFormatInstruction: DEFAULT_OPTIONS.enableAnswerFormatInstruction,
   answerFormatInstruction: DEFAULT_OPTIONS.answerFormatInstruction,
+  triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
+  panelWidth: DEFAULT_OPTIONS.panelWidth,
+  panelHeight: DEFAULT_OPTIONS.panelHeight,
   apiBaseUrl: '',
   apiKey: '',
   model: '',
@@ -90,6 +101,9 @@ export function normalizeExtensionOptions(stored: Record<string, unknown>): Exte
     : connections[0].id;
 
   const temperature = Number(stored.temperature);
+  const triggerPlacement = String(stored.triggerPlacement || '');
+  const panelWidth = Number(stored.panelWidth);
+  const panelHeight = Number(stored.panelHeight);
   return {
     enabled: stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled),
     connections,
@@ -98,7 +112,12 @@ export function normalizeExtensionOptions(stored: Record<string, unknown>): Exte
     enableAnswerFormatInstruction: stored.enableAnswerFormatInstruction === undefined
       ? DEFAULT_OPTIONS.enableAnswerFormatInstruction
       : Boolean(stored.enableAnswerFormatInstruction),
-    answerFormatInstruction: String(stored.answerFormatInstruction || '').trim()
+    answerFormatInstruction: String(stored.answerFormatInstruction || '').trim(),
+    triggerPlacement: ['top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(triggerPlacement)
+      ? triggerPlacement as TriggerPlacement
+      : DEFAULT_OPTIONS.triggerPlacement,
+    panelWidth: Number.isFinite(panelWidth) ? Math.round(Math.min(720, Math.max(300, panelWidth))) : DEFAULT_OPTIONS.panelWidth,
+    panelHeight: Number.isFinite(panelHeight) ? Math.round(Math.min(720, Math.max(220, panelHeight))) : DEFAULT_OPTIONS.panelHeight
   };
 }
 

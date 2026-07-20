@@ -15,6 +15,11 @@ export interface Position {
   top: number;
 }
 
+export interface PanelSize {
+  width: number;
+  height: number;
+}
+
 export interface SelectionTarget {
   rect: ViewportRect;
   pageTitle: string;

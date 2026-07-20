@@ -30,24 +30,29 @@ body {
 
 button, select { font: inherit; }
 button:focus-visible, select:focus-visible { outline: 3px solid rgba(88, 23, 199, 0.22); outline-offset: 2px; }
-.popup-shell { min-height: 344px; background: var(--canvas); }
+.popup-shell {
+  display: flex;
+  min-height: 344px;
+  flex-direction: column;
+  background: var(--canvas);
+}
 
 .popup-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 76px;
+  height: 62px;
   padding: 0 22px;
   background: var(--purple);
   color: #fff;
 }
 
-.brand h1 { margin: 0; font-size: var(--font-lg); font-weight: 750; letter-spacing: -0.025em; }
+.brand h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.015em; }
 .header-actions { display: flex; align-items: center; gap: 6px; }
 .icon-button {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   place-items: center;
   border: 0;
@@ -72,7 +77,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid rgba(88, 23, 199
 }
 .power-button.is-on::after { background: #70e0aa; }
 
-.popup-content { padding: 20px 22px 0; }
+.popup-content { flex: 1; padding: 18px 22px 20px; }
 .notice {
   display: flex;
   align-items: center;
@@ -85,7 +90,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid rgba(88, 23, 199
 .notice-paused { color: var(--paused); }
 .notice strong { font-weight: 650; }
 
-.model-panel { padding: 2px 0 22px; border-bottom: 1px solid var(--line); }
+.model-panel { padding: 2px 0 8px; }
 .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .section-title h2 { margin: 0; font-size: var(--font-md); font-weight: 700; }
 .section-title p { margin: 4px 0 0; color: var(--muted); font-size: var(--font-xs); }
@@ -98,11 +103,8 @@ button:focus-visible, select:focus-visible { outline: 3px solid rgba(88, 23, 199
   gap: 10px;
   height: 52px;
   margin-top: 14px;
-  border-bottom: 1px solid #cfc9d5;
   color: var(--purple);
-  transition: border-color 140ms ease;
 }
-.model-select:focus-within { border-color: var(--purple); }
 .model-icon { color: var(--purple); }
 .model-select select {
   width: 100%;
@@ -119,34 +121,14 @@ button:focus-visible, select:focus-visible { outline: 3px solid rgba(88, 23, 199
 .model-select select:disabled { color: #9b969e; cursor: not-allowed; }
 .select-arrow { color: #918a96; pointer-events: none; }
 
-.settings-row {
-  display: grid;
-  grid-template-columns: 26px 1fr auto;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  min-height: 74px;
-  padding: 12px 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  text-align: left;
-}
-.settings-row:hover .settings-row-arrow, .settings-row:hover .settings-row-icon { color: var(--purple); }
-.settings-row-icon { color: #625c68; }
-.settings-row div { display: grid; gap: 2px; }
-.settings-row strong { font-size: var(--font-sm); font-weight: 700; }
-.settings-row small { color: var(--muted); font-size: var(--font-xs); }
-.settings-row-arrow { color: #98919c; transition: color 140ms ease; }
-
 .popup-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 50px;
+  min-height: 48px;
+  margin-top: auto;
   padding: 0 22px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid #eeeaf1;
   color: #918b95;
   font-size: var(--font-xs);
 }
