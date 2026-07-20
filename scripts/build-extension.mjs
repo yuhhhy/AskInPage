@@ -20,6 +20,7 @@ async function prepareOutput(root) {
   await mkdir(resolve(root, 'options'), { recursive: true });
   await mkdir(resolve(root, 'popup'), { recursive: true });
   await mkdir(resolve(root, 'background'), { recursive: true });
+  await mkdir(resolve(root, 'icons'), { recursive: true });
   await cp(resolve(projectRoot, 'src/manifest.json'), resolve(root, 'manifest.json'));
   await cp(resolve(projectRoot, 'src/content/styles.css'), resolve(root, 'content/styles.css'));
   await cp(resolve(projectRoot, 'src/options/styles.css'), resolve(root, 'options/styles.css'));
@@ -27,6 +28,9 @@ async function prepareOutput(root) {
   await cp(resolve(projectRoot, 'src/popup/styles.css'), resolve(root, 'popup/styles.css'));
   await cp(resolve(projectRoot, 'src/popup/index.html'), resolve(root, 'popup/index.html'));
   await cp(resolve(projectRoot, 'src/popup/github-mark.svg'), resolve(root, 'popup/github-mark.svg'));
+  for (const size of [16, 32, 48, 128]) {
+    await cp(resolve(projectRoot, `public/icons/icon-${size}.png`), resolve(root, `icons/icon-${size}.png`));
+  }
 }
 
 function createBuildContext(entry, outRoot) {

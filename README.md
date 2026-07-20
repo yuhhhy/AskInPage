@@ -1,5 +1,6 @@
 <h1 align="center">AskInPage</h1>
 
+
 <p align="center">
   在任意网页选中文字，获得结合页面上下文的 AI 解释或翻译
 </p>
@@ -7,6 +8,11 @@
 <p align="center">
   划一下，问一下，少一点跳转
 </p>
+
+<p align="center">
+  <img src="./public/icons/icon-128.png" width="128" height="128" alt="AskInPage Logo">
+</p>
+
 
 <p align="center">
   Manifest V3 · React · TypeScript · Chrome · Edge
@@ -26,12 +32,23 @@
 
 选中文字后，可以直接输入自己的问题。AskInPage 会同时参考选中文字、附近内容和追加问题生成回答。
 
+### 🔍 效果预览
+
+<p align="center">
+  <img src="./public/images/AskChat.png" alt="功能展示">
+</p>
+
+
 ### 回答面板
 
 - 支持流式输出
 - 支持拖拽和固定位置
 - 右键可以复制回答或重新生成
-- 可以选中回答中的内容继续提问
+- 可以选中回答中的内容继续递归式地提问
+
+<p align="center">
+  <img src="./public/images/AskChatResult.png" alt="结果展示">
+</p>
 
 ## 安全与权限
 
@@ -53,8 +70,7 @@ npm run lint
 npm run build
 ```
 
-发布新版本时，只需在干净的 `main` 分支执行：
-
+发布新版本时
 ```bash
 npm run release -- major
 ```
