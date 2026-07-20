@@ -1,4 +1,4 @@
-import { DEFAULT_OPTIONS } from '../shared/options.js';
+import { DEFAULT_CONNECTION, DEFAULT_OPTIONS, STORAGE_DEFAULTS, getActiveConnection, normalizeExtensionOptions } from '../shared/options';
 
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
 const REQUEST_IDLE_TIMEOUT_MS = 45000;
@@ -6,13 +6,13 @@ const activeRequests = new Map();
 
 function normalizeBaseUrl(url) {
   const trimmed = String(url || '').trim().replace(/\/+$/, '');
-  if (!trimmed) return DEFAULT_OPTIONS.apiBaseUrl;
+  if (!trimmed) return DEFAULT_CONNECTION.apiBaseUrl;
   return trimmed.endsWith('/chat/completions') ? trimmed : `${trimmed}/chat/completions`;
 }
 
 async function getOptions() {
-  const stored = await chrome.storage.sync.get(DEFAULT_OPTIONS);
-  return { ...DEFAULT_OPTIONS, ...stored };
+  const stored = await chrome.storage.sync.get(STORAGE_DEFAULTS);
+  return normalizeExtensionOptions(stored);
 }
 
 function getCustomInstructionText(answerFormatInstruction) {
@@ -115,7 +115,8 @@ async function readOpenAiStream(response, onChunk, onActivity) {
 
 async function explainSelection(payload, sender) {
   const options = await getOptions();
-  if (!options.apiKey) {
+  const connection = getActiveConnection(options);
+  if (!connection.apiKey) {
     throw new Error('请先在扩展设置中填写 API Key');
   }
 
@@ -151,15 +152,15 @@ async function explainSelection(payload, sender) {
   activeRequests.set(payload.requestId, { controller, clearTimers });
 
   try {
-    const res = await fetch(normalizeBaseUrl(options.apiBaseUrl), {
+    const res = await fetch(normalizeBaseUrl(connection.apiBaseUrl), {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${options.apiKey}`
+        Authorization: `Bearer ${connection.apiKey}`
       },
       body: JSON.stringify({
-        model: options.model,
+        model: connection.model,
         temperature: Number(options.temperature) || DEFAULT_OPTIONS.temperature,
         stream: true,
         messages: [

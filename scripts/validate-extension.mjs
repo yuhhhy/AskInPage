@@ -12,7 +12,14 @@ function assert(condition, message) {
 
 async function assertSourceFile(relativePath, label) {
   assert(relativePath, `${label} is missing from manifest.json`);
-  const absolutePath = resolve(sourceRoot, relativePath);
+  const sourceEntryMap = {
+    'background/service-worker.js': 'background/service-worker.ts',
+    'content/index.js': 'content/index.tsx',
+    'popup/index.js': 'popup/index.tsx',
+    'options/index.js': 'options/index.tsx'
+  };
+  const sourcePath = sourceEntryMap[relativePath] || relativePath;
+  const absolutePath = resolve(sourceRoot, sourcePath);
   assert(absolutePath.startsWith(`${sourceRoot}/`), `${label} points outside src: ${relativePath}`);
   await access(absolutePath);
 }

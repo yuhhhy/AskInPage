@@ -1,3 +1,9 @@
+import { createRoot, type Root } from 'react-dom/client';
+import { DEFAULT_OPTIONS } from '../shared/options';
+import { AskChatApp, type AskChatActions } from './components/AskChatApp';
+import { THINKING_STATUS_INTERVAL_MS, THINKING_STATUS_MESSAGES } from './constants';
+import type { Intent, PanelStatus, PopoverState, Position, SelectionContext, SelectionTarget, ViewportRect } from './types';
+
 const ASK_CHAT_ROOT_ID = 'ask-chat-selection-root';
 const MAX_CONTEXT_CHARS = 5000;
 const MAX_LOCAL_CONTEXT_CHARS = 1800;
@@ -20,25 +26,14 @@ const LOW_VALUE_SELECTOR = [
   '[role="contentinfo"]',
   '[aria-hidden="true"]'
 ].join(',');
-const THINKING_STATUS_INTERVAL_MS = 4400;
-const THINKING_STATUS_MESSAGES = [
-  '思考中',
-  '少女祈祷中',
-  '正在烧高香，祈求 GPU 不过热',
-  'AI 正在抽卡',
-  '正在与服务器搏斗',
-  '正在翻越防火长城',
-  '向量空间迷路中',
-  'Token 正在排队',
-  '正在打开次元裂缝'
-];
-
-let root = null;
+let root: HTMLDivElement | null = null;
+let reactRoot: Root | null = null;
 let nextPopoverId = 1;
 let suppressNextSelection = false;
-const popovers = new Map();
+let extensionEnabled = DEFAULT_OPTIONS.enabled;
+const popovers = new Map<string, PopoverState>();
 
-function ensureRoot() {
+function ensureRoot(): HTMLDivElement {
   if (root) return root;
   root = document.createElement('div');
   root.id = ASK_CHAT_ROOT_ID;
@@ -50,9 +45,10 @@ function isInsideAskChat(node) {
   return Boolean(node && ensureRoot().contains(node));
 }
 
-function getSelectionRect(range) {
-  const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
-  const rect = rects[rects.length - 1] || range.getBoundingClientRect();
+function getSelectionRect(range: Range): ViewportRect {
+  const rects = Array.from(range.getClientRects()) as DOMRect[];
+  const visibleRects = rects.filter(rect => rect.width > 0 && rect.height > 0);
+  const rect = visibleRects[visibleRects.length - 1] || range.getBoundingClientRect();
   return {
     top: rect.top,
     right: rect.right,
@@ -93,8 +89,8 @@ function getRandomThinkingStatusIndex(excludedIndex = -1) {
   return nextIndex;
 }
 
-function getMetaDescription() {
-  return document.querySelector('meta[name="description"], meta[property="og:description"]')?.content || '';
+function getMetaDescription(): string {
+  return (document.querySelector('meta[name="description"], meta[property="og:description"]') as HTMLMetaElement | null)?.content || '';
 }
 
 function getElementText(element) {
@@ -108,8 +104,8 @@ function getCleanElementText(element) {
   return getElementText(clone);
 }
 
-function getPageLanguage() {
-  return document.documentElement.lang || document.querySelector('meta[http-equiv="content-language"]')?.content || '';
+function getPageLanguage(): string {
+  return document.documentElement.lang || (document.querySelector('meta[http-equiv="content-language"]') as HTMLMetaElement | null)?.content || '';
 }
 
 function isLowValueElement(element) {
@@ -158,8 +154,8 @@ function getHeadingChain(element) {
 
 function getLinkDensity(element) {
   const textLength = getCleanElementText(element).length || 1;
-  const linkLength = Array.from(element?.querySelectorAll?.('a') || [])
-    .reduce((sum, link) => sum + getElementText(link).length, 0);
+  const links = Array.from(element?.querySelectorAll?.('a') || []) as HTMLAnchorElement[];
+  const linkLength = links.reduce<number>((sum, link) => sum + getElementText(link).length, 0);
   return linkLength / textLength;
 }
 
@@ -272,7 +268,7 @@ function formatContextSection(title, content) {
   return text ? `【${title}】\n${text}` : '';
 }
 
-function buildSelectionContext(selection) {
+function buildSelectionContext(selection: Selection): SelectionContext {
   const selectedText = normalizeText(selection.toString());
   const block = getSemanticBlock(selection.anchorNode) || getBlockElement(selection.anchorNode);
   const localText = windowAroundSelection(getCleanElementText(block), selectedText, MAX_LOCAL_CONTEXT_CHARS);
@@ -280,7 +276,7 @@ function buildSelectionContext(selection) {
   const nextText = getSiblingContext(block, 'next');
   const tableContext = getTableContext(selection);
   const mainText = windowAroundSelection(getMainText(selectedText), selectedText, MAX_PAGE_CONTEXT_CHARS);
-  const context = {
+  const context: SelectionContext = {
     selectedText,
     page: {
       title: document.title || '',
@@ -299,7 +295,8 @@ function buildSelectionContext(selection) {
       currentText: localText,
       nextText
     },
-    mainContext: mainText
+    mainContext: mainText,
+    formattedText: ''
   };
 
   context.formattedText = formatSelectionContext(context);
@@ -329,7 +326,7 @@ function formatSelectionContext(context) {
   return contextParts.join('\n\n').slice(0, MAX_CONTEXT_CHARS);
 }
 
-function buildFallbackSelectionContext(selection, selectedText) {
+function buildFallbackSelectionContext(selection: Selection, selectedText: string): SelectionContext {
   const block = getBlockElement(selection.anchorNode);
   const currentText = windowAroundSelection(getElementText(block), selectedText, MAX_LOCAL_CONTEXT_CHARS);
   return {
@@ -351,11 +348,12 @@ function buildFallbackSelectionContext(selection, selectedText) {
       currentText,
       nextText: ''
     },
-    mainContext: ''
+    mainContext: '',
+    formattedText: ''
   };
 }
 
-function buildSafeSelectionContext(selection, selectedText) {
+function buildSafeSelectionContext(selection: Selection, selectedText: string): SelectionContext {
   try {
     return buildSelectionContext(selection);
   } catch (error) {
@@ -366,217 +364,95 @@ function buildSafeSelectionContext(selection, selectedText) {
   }
 }
 
-function escapeHtml(text) {
-  return String(text || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+function syncUi() {
+  if (!reactRoot) reactRoot = createRoot(ensureRoot());
+  reactRoot.render(<AskChatApp states={[...popovers.values()]} actions={askChatActions} />);
 }
 
-function renderInlineMarkdown(text) {
-  return escapeHtml(text)
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer noopener">$1</a>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/_([^_]+)_/g, '<em>$1</em>');
-}
-
-function renderMarkdown(text) {
-  const lines = String(text || '').split(/\r?\n/);
-  const html = [];
-  let paragraph = [];
-  let listStack = [];
-  let blockquote = [];
-  let tableRows = [];
-  let codeBlock = null;
-
-  const flushParagraph = () => {
-    if (!paragraph.length) return;
-    html.push(`<p>${renderInlineMarkdown(paragraph.join(' '))}</p>`);
-    paragraph = [];
-  };
-
-  const flushLists = () => {
-    while (listStack.length) {
-      html.push(`</${listStack.pop().type}>`);
-    }
-  };
-
-  const flushBlockquote = () => {
-    if (!blockquote.length) return;
-    html.push(`<blockquote>${blockquote.map(item => `<p>${renderInlineMarkdown(item)}</p>`).join('')}</blockquote>`);
-    blockquote = [];
-  };
-
-  const isSeparatorRow = (cells) => cells.length > 0 && cells.every(cell => /^:?-{3,}:?$/.test(cell.trim()));
-
-  const renderTable = (rows) => {
-    if (rows.length < 2) {
-      rows.forEach(row => paragraph.push(row.raw));
-      return;
-    }
-
-    const [header, separator, ...body] = rows;
-    if (!isSeparatorRow(separator.cells)) {
-      rows.forEach(row => paragraph.push(row.raw));
-      return;
-    }
-
-    const head = `<thead><tr>${header.cells.map(cell => `<th>${renderInlineMarkdown(cell.trim())}</th>`).join('')}</tr></thead>`;
-    const bodyHtml = body.length
-      ? `<tbody>${body.map(row => `<tr>${row.cells.map(cell => `<td>${renderInlineMarkdown(cell.trim())}</td>`).join('')}</tr>`).join('')}</tbody>`
-      : '';
-    html.push(`<table>${head}${bodyHtml}</table>`);
-  };
-
-  const flushTable = () => {
-    if (!tableRows.length) return;
-    renderTable(tableRows);
-    tableRows = [];
-  };
-
-  for (const line of lines) {
-    const fenceMatch = line.match(/^```(.*)$/);
-    if (fenceMatch) {
-      flushParagraph();
-      flushLists();
-      flushBlockquote();
-      flushTable();
-      if (codeBlock) {
-        html.push(`<pre><code>${escapeHtml(codeBlock.lines.join('\n'))}</code></pre>`);
-        codeBlock = null;
-      } else {
-        codeBlock = { language: fenceMatch[1].trim(), lines: [] };
-      }
-      continue;
-    }
-
-    if (codeBlock) {
-      codeBlock.lines.push(line);
-      continue;
-    }
-
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flushParagraph();
-      flushLists();
-      flushBlockquote();
-      flushTable();
-      continue;
-    }
-
-    const tableMatch = trimmed.includes('|') ? trimmed.split('|').map(cell => cell.trim()).filter((cell, index, cells) => !(index === 0 && cell === '') && !(index === cells.length - 1 && cell === '')) : null;
-    if (tableMatch && tableMatch.length >= 2) {
-      flushParagraph();
-      flushLists();
-      flushBlockquote();
-      tableRows.push({ raw: trimmed, cells: tableMatch });
-      continue;
-    }
-
-    flushTable();
-
-    const quoteMatch = trimmed.match(/^>\s?(.*)$/);
-    if (quoteMatch) {
-      flushParagraph();
-      flushLists();
-      blockquote.push(quoteMatch[1]);
-      continue;
-    }
-
-    flushBlockquote();
-
-    const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
-    if (listMatch) {
-      flushParagraph();
-      const indent = Math.floor(listMatch[1].replace(/\t/g, '  ').length / 2);
-      const type = /^\d+\.$/.test(listMatch[2]) ? 'ol' : 'ul';
-
-      while (listStack.length > indent + 1) {
-        html.push(`</${listStack.pop().type}>`);
-      }
-      while (listStack.length < indent + 1) {
-        html.push(`<${type}>`);
-        listStack.push({ type });
-      }
-      if (listStack[listStack.length - 1].type !== type) {
-        html.push(`</${listStack.pop().type}>`);
-        html.push(`<${type}>`);
-        listStack.push({ type });
-      }
-      html.push(`<li>${renderInlineMarkdown(listMatch[3])}</li>`);
-      continue;
-    }
-
-    flushLists();
-    paragraph.push(trimmed);
+function clearUi() {
+  for (const state of popovers.values()) {
+    stopWaitingRotation(state);
+    cancelActiveRequest(state);
   }
-
-  if (codeBlock) {
-    html.push(`<pre><code>${escapeHtml(codeBlock.lines.join('\n'))}</code></pre>`);
-  }
-  flushParagraph();
-  flushLists();
-  flushBlockquote();
-  flushTable();
-  return html.join('');
+  popovers.clear();
+  reactRoot?.render(<AskChatApp states={[]} actions={askChatActions} />);
 }
 
-function createPopover(target) {
-  const id = `ask-chat-${nextPopoverId}`;
-  nextPopoverId += 1;
+const askChatActions: AskChatActions = {
+  startLookup,
+  closePopover,
+  togglePinned,
+  showActionMenu: renderActionMenu,
+  closeActionMenus: () => closeActionMenus(),
+  updatePrompt: (id, prompt) => {
+    const state = popovers.get(id);
+    if (!state) return;
+    state.userPrompt = prompt;
+    syncUi();
+  },
+  updatePanelPosition: (id, position) => {
+    const state = popovers.get(id);
+    if (!state) return;
+    state.panelPosition = position;
+    syncUi();
+  },
+  updateScroll: (id, scrollTop, wasNearBottom) => {
+    const state = popovers.get(id);
+    if (!state) return;
+    state.scrollTop = scrollTop;
+    state.wasNearBottom = wasNearBottom;
+  },
+  handlePanelSelection,
+  getTriggerPosition: (target) => clampPosition(target.rect, 'button'),
+  getPanelPosition: (state) => state.panelPosition || clampPosition(state.target.rect, 'panel')
+};
+
+function createPopover(target: SelectionTarget): string {
+  const id = `ask-chat-${nextPopoverId++}`;
   popovers.set(id, {
     id,
     target,
+    mode: 'button',
+    status: 'loading',
+    error: '',
     requestId: '',
     content: '',
     intent: target.intent || 'explain',
+    userPrompt: '',
     waitingIndex: getRandomThinkingStatusIndex(),
     waitingTimer: null,
     actionMenuPosition: null,
     pinned: false,
     panelPosition: null,
-    dragState: null
+    scrollTop: 0,
+    wasNearBottom: true
   });
   return id;
 }
 
-function removePopoverElement(id) {
-  ensureRoot().querySelector(`[data-ask-chat-id="${id}"]`)?.remove();
-  ensureRoot().querySelector(`[data-ask-chat-menu-id="${id}"]`)?.remove();
-}
-
-function closePopover(id) {
+function closePopover(id: string) {
   const state = popovers.get(id);
   stopWaitingRotation(state);
   cancelActiveRequest(state);
-  removePopoverElement(id);
   popovers.delete(id);
+  syncUi();
 }
 
-function cancelActiveRequest(state) {
+function cancelActiveRequest(state?: PopoverState) {
   if (!state?.requestId) return;
-  chrome.runtime.sendMessage({
-    type: 'ASK_CHAT_CANCEL',
-    requestId: state.requestId
-  }).catch(() => {});
+  chrome.runtime.sendMessage({ type: 'ASK_CHAT_CANCEL', requestId: state.requestId }).catch(() => {});
   state.requestId = '';
 }
 
-function stopWaitingRotation(state) {
+function stopWaitingRotation(state?: PopoverState) {
   if (!state?.waitingTimer) return;
   window.clearInterval(state.waitingTimer);
   state.waitingTimer = null;
 }
 
-function startWaitingRotation(id) {
+function startWaitingRotation(id: string) {
   const state = popovers.get(id);
   if (!state) return;
-
   stopWaitingRotation(state);
   state.waitingIndex = getRandomThinkingStatusIndex(state.waitingIndex);
   state.waitingTimer = window.setInterval(() => {
@@ -586,256 +462,102 @@ function startWaitingRotation(id) {
       return;
     }
     current.waitingIndex = getRandomThinkingStatusIndex(current.waitingIndex);
-    const waitingText = ensureRoot().querySelector(`[data-ask-chat-id="${id}"] .ask-chat-waiting-text`);
-    if (waitingText) waitingText.textContent = THINKING_STATUS_MESSAGES[current.waitingIndex];
+    syncUi();
   }, THINKING_STATUS_INTERVAL_MS);
 }
 
-function renderButton(target) {
+function renderButton(target: SelectionTarget): string {
   closeButtonPopovers();
   const id = createPopover(target);
-  const host = ensureRoot();
-  const position = clampPosition(target.rect, 'button');
-  const state = popovers.get(id);
-  state.mode = 'button';
-  host.insertAdjacentHTML('beforeend', `
-    <div class="ask-chat-popover ask-chat-trigger" data-ask-chat-id="${id}" style="left:${position.left}px;top:${position.top}px">
-      <button type="button">Ask Chat</button>
-      <input type="text" placeholder="Ask more..." aria-label="Ask Chat custom prompt">
-    </div>
-  `);
-  const trigger = host.querySelector(`[data-ask-chat-id="${id}"]`);
-  trigger.querySelector('button')?.addEventListener('click', () => startLookup(id, 'explain'));
-  trigger.querySelector('input')?.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter') return;
-    event.preventDefault();
-    startLookup(id, 'explain');
-  });
+  syncUi();
   return id;
 }
 
-function closeButtonPopovers(exceptId = '') {
+function closeButtonPopovers(exceptId = ''): boolean {
   let closed = false;
-  for (const [id, state] of popovers) {
+  for (const [id, state] of [...popovers]) {
     if (state.mode === 'button' && id !== exceptId) {
-      closePopover(id);
+      stopWaitingRotation(state);
+      cancelActiveRequest(state);
+      popovers.delete(id);
       closed = true;
     }
   }
+  if (closed) syncUi();
   return closed;
 }
 
 function closeActionMenus(exceptId = '') {
+  let changed = false;
   for (const [id, state] of popovers) {
-    if (id !== exceptId) state.actionMenuPosition = null;
+    if (id !== exceptId && state.actionMenuPosition) {
+      state.actionMenuPosition = null;
+      changed = true;
+    }
   }
-  ensureRoot().querySelectorAll('[data-ask-chat-menu-id]').forEach((menu) => {
-    if (menu.dataset.askChatMenuId !== exceptId) menu.remove();
-  });
+  if (changed) syncUi();
 }
 
-function clampActionMenuPosition(left, top) {
+function clampActionMenuPosition(left: number, top: number): Position {
   const margin = 8;
-  const width = 132;
-  const height = 42;
   return {
-    left: Math.min(Math.max(left, margin), Math.max(margin, window.innerWidth - width - margin)),
-    top: Math.min(Math.max(top, margin), Math.max(margin, window.innerHeight - height - margin))
+    left: Math.min(Math.max(left, margin), Math.max(margin, window.innerWidth - 132 - margin)),
+    top: Math.min(Math.max(top, margin), Math.max(margin, window.innerHeight - 42 - margin))
   };
 }
 
-function renderActionMenu(id, clientX, clientY) {
+function renderActionMenu(id: string, clientX: number, clientY: number) {
   const state = popovers.get(id);
   if (!state) return;
-
   closeActionMenus(id);
-  const position = clampActionMenuPosition(clientX, clientY);
-  state.actionMenuPosition = position;
-  const hasContent = Boolean(normalizeText(state.content));
-  ensureRoot().querySelector(`[data-ask-chat-menu-id="${id}"]`)?.remove();
-  ensureRoot().insertAdjacentHTML('beforeend', `
-    <div class="ask-chat-action-menu" data-ask-chat-menu-id="${id}" style="left:${position.left}px;top:${position.top}px">
-      <button type="button" data-action="copy"${hasContent ? '' : ' disabled'}>复制</button>
-      <button type="button" data-action="regenerate">重新生成</button>
-    </div>
-  `);
-
-  const menu = ensureRoot().querySelector(`[data-ask-chat-menu-id="${id}"]`);
-  menu.querySelector('[data-action="copy"]')?.addEventListener('click', async () => {
-    if (!normalizeText(state.content)) return;
-    try {
-      await navigator.clipboard.writeText(state.content);
-    } catch {
-      // Clipboard may be unavailable on restricted pages.
-    }
-    closeActionMenus();
-  });
-  menu.querySelector('[data-action="regenerate"]')?.addEventListener('click', () => {
-    closeActionMenus();
-    startLookup(id, state.intent || 'explain');
-  });
+  state.actionMenuPosition = clampActionMenuPosition(clientX, clientY);
+  syncUi();
 }
 
-function renderPanel(id, { status = 'loading', content = '', error = '' } = {}) {
+function renderPanel(id: string, { status = 'loading', content = '', error = '' }: { status?: PanelStatus; content?: string; error?: string } = {}) {
   const state = popovers.get(id);
   if (!state) return;
-
   state.mode = 'panel';
-  const host = ensureRoot();
-  const position = state.panelPosition || clampPosition(state.target.rect, 'panel');
-  state.panelPosition = position;
+  state.status = status;
+  state.error = error;
+  state.panelPosition ||= clampPosition(state.target.rect, 'panel');
   if (content) state.content = content;
-
-  const body = state.content
-    ? renderMarkdown(state.content)
-    : status === 'error'
-      ? `<span class="ask-chat-error">${escapeHtml(error)}</span>`
-      : `<span class="ask-chat-muted ask-chat-waiting"><span class="ask-chat-waiting-spinner" aria-hidden="true"></span><span class="ask-chat-waiting-text">${escapeHtml(THINKING_STATUS_MESSAGES[state.waitingIndex])}</span></span>`;
-
-  const headerInner = state.userPrompt
-    ? `<div class="ask-chat-header-text"><span title="${escapeHtml(state.target.text)}">「${escapeHtml(state.target.text)}」</span><span class="ask-chat-user-prompt" title="${escapeHtml(state.userPrompt)}">${escapeHtml(state.userPrompt)}</span></div>`
-    : `<span title="${escapeHtml(state.target.text)}">「${escapeHtml(state.target.text)}」</span>`;
-
-  removePopoverElement(id);
-  host.insertAdjacentHTML('beforeend', `
-    <section class="ask-chat-popover ask-chat-panel${state.pinned ? ' pinned' : ''}" data-ask-chat-id="${id}" style="left:${position.left}px;top:${position.top}px">
-      <div class="ask-chat-header">
-        <button type="button" class="ask-chat-pin" aria-label="${state.pinned ? 'Unpin Ask Chat popup' : 'Pin Ask Chat popup'}" aria-pressed="${state.pinned}" title="${state.pinned ? 'Unpin' : 'Pin'}">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14.5 3.5 20.5 9.5 18.4 11.6 16.8 10 13 13.8V18L11.8 19.2 8.2 15.6 4 19.8 3.2 19 7.4 14.8 3.8 11.2 5 10H9.2L13 6.2 11.4 4.6 14.5 3.5Z"></path>
-          </svg>
-        </button>
-        ${headerInner}
-        <button type="button" aria-label="Close">×</button>
-      </div>
-      <div class="ask-chat-meta">${status === 'loading' ? (state.intent === 'translate' ? '正在翻译' : '正在询问模型') : status === 'error' ? (state.intent === 'translate' ? '翻译失败' : '解释失败') : (state.intent === 'translate' ? '翻译完成' : 'Ask Chat')}</div>
-      <div class="ask-chat-body" data-content="${escapeHtml(state.content)}">${body}</div>
-    </section>
-  `);
-
-  const panel = host.querySelector(`[data-ask-chat-id="${id}"]`);
-  panel.querySelector('.ask-chat-pin')?.addEventListener('click', () => togglePinned(id));
-  panel.querySelector('.ask-chat-header button[aria-label="Close"]')?.addEventListener('click', () => closePopover(id));
-  panel.querySelector('.ask-chat-body')?.addEventListener('mouseup', () => handlePanelSelection(id));
-  panel.querySelector('.ask-chat-body')?.addEventListener('keyup', () => handlePanelSelection(id));
-  panel.addEventListener('contextmenu', (event) => {
-    event.preventDefault();
-    renderActionMenu(id, event.clientX, event.clientY);
-  });
-  attachPanelDrag(id);
+  syncUi();
 }
 
-function getPanelStatusText(state, status) {
-  if (status === 'loading') return state.intent === 'translate' ? '正在翻译' : '正在询问模型';
-  if (status === 'error') return state.intent === 'translate' ? '翻译失败' : '解释失败';
-  return state.intent === 'translate' ? '翻译完成' : 'Ask Chat';
-}
-
-function updatePanelMeta(id, status) {
+function updatePanelMeta(id: string, status: PanelStatus) {
   const state = popovers.get(id);
-  const meta = ensureRoot().querySelector(`[data-ask-chat-id="${id}"] .ask-chat-meta`);
-  if (!state || !meta) return;
-  meta.textContent = getPanelStatusText(state, status);
+  if (!state) return;
+  state.status = status;
+  syncUi();
 }
 
-function updatePanelBodyContent(id, content) {
-  const body = ensureRoot().querySelector(`[data-ask-chat-id="${id}"] .ask-chat-body`);
-  if (!body) return;
-
-  const previousScrollTop = body.scrollTop;
-  const wasNearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 24;
-  body.dataset.content = content;
-  body.innerHTML = renderMarkdown(content);
-  if (wasNearBottom) {
-    body.scrollTop = body.scrollHeight;
-  } else {
-    body.scrollTop = previousScrollTop;
-  }
-}
-
-function togglePinned(id) {
+function updatePanelBodyContent(id: string, content: string) {
   const state = popovers.get(id);
-  const panel = ensureRoot().querySelector(`[data-ask-chat-id="${id}"]`);
-  if (!state || !panel) return;
+  if (!state) return;
+  state.content = content;
+  syncUi();
+}
 
+function togglePinned(id: string) {
+  const state = popovers.get(id);
+  if (!state) return;
   state.pinned = !state.pinned;
-  panel.classList.toggle('pinned', state.pinned);
-  const pin = panel.querySelector('.ask-chat-pin');
-  if (pin) {
-    pin.setAttribute('aria-label', state.pinned ? 'Unpin Ask Chat popup' : 'Pin Ask Chat popup');
-    pin.setAttribute('aria-pressed', String(state.pinned));
-    pin.setAttribute('title', state.pinned ? 'Unpin' : 'Pin');
-  }
+  syncUi();
 }
 
-function clampPanelPosition(left, top, panel) {
-  const margin = 8;
-  const rect = panel.getBoundingClientRect();
-  return {
-    left: Math.min(Math.max(left, margin), Math.max(margin, window.innerWidth - rect.width - margin)),
-    top: Math.min(Math.max(top, margin), Math.max(margin, window.innerHeight - rect.height - margin))
-  };
-}
-
-function attachPanelDrag(id) {
-  const state = popovers.get(id);
-  const panel = ensureRoot().querySelector(`[data-ask-chat-id="${id}"]`);
-  const header = panel?.querySelector('.ask-chat-header');
-  if (!state || !panel || !header) return;
-
-  header.addEventListener('pointerdown', (event) => {
-    if (event.target.closest('button')) return;
-    const rect = panel.getBoundingClientRect();
-    state.dragState = {
-      pointerId: event.pointerId,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top
-    };
-    header.setPointerCapture(event.pointerId);
-    panel.classList.add('dragging');
-    event.preventDefault();
-  });
-
-  header.addEventListener('pointermove', (event) => {
-    if (!state.dragState || state.dragState.pointerId !== event.pointerId) return;
-    const next = clampPanelPosition(
-      event.clientX - state.dragState.offsetX,
-      event.clientY - state.dragState.offsetY,
-      panel
-    );
-    state.panelPosition = next;
-    panel.style.left = `${next.left}px`;
-    panel.style.top = `${next.top}px`;
-  });
-
-  const endDrag = (event) => {
-    if (!state.dragState || state.dragState.pointerId !== event.pointerId) return;
-    state.dragState = null;
-    panel.classList.remove('dragging');
-    try {
-      header.releasePointerCapture(event.pointerId);
-    } catch {
-      // Pointer capture may already be released.
-    }
-  };
-
-  header.addEventListener('pointerup', endDrag);
-  header.addEventListener('pointercancel', endDrag);
-}
-
-async function startLookup(id, intent = 'explain') {
+async function startLookup(id: string, intent: Intent = 'explain') {
   const state = popovers.get(id);
   if (!state) return;
 
   const requestId = crypto.randomUUID();
-  const trigger = ensureRoot().querySelector(`[data-ask-chat-id="${id}"]`);
   stopWaitingRotation(state);
   cancelActiveRequest(state);
   closeActionMenus();
   state.requestId = requestId;
   state.content = '';
   state.intent = intent;
-  state.userPrompt = intent === 'translate' ? '' : (trigger?.querySelector('input')?.value?.trim() || state.userPrompt || '');
+  state.userPrompt = intent === 'translate' ? '' : state.userPrompt.trim();
   renderPanel(id, { status: 'loading' });
   startWaitingRotation(id);
 
@@ -878,7 +600,9 @@ async function startLookup(id, intent = 'explain') {
 }
 
 function handlePageSelection() {
+  if (!extensionEnabled) return;
   window.setTimeout(() => {
+    if (!extensionEnabled) return;
     if (suppressNextSelection) {
       suppressNextSelection = false;
       return;
@@ -916,10 +640,11 @@ function handlePageSelection() {
 }
 
 function handlePanelSelection(id) {
+  if (!extensionEnabled) return;
   window.setTimeout(() => {
     const state = popovers.get(id);
     const selection = window.getSelection();
-    const body = ensureRoot().querySelector(`[data-ask-chat-id="${id}"] .ask-chat-body`);
+    const body = ensureRoot().querySelector(`[data-ask-chat-id="${id}"] .ask-chat-body`) as HTMLElement | null;
     if (!state || !body || !selection || selection.isCollapsed || selection.rangeCount === 0) return;
     if (!body.contains(selection.anchorNode) || !body.contains(selection.focusNode)) return;
 
@@ -938,8 +663,12 @@ function handlePanelSelection(id) {
   }, 0);
 }
 
-chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type !== 'ASK_CHAT_DELTA') return;
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === 'ASK_CHAT_PING') {
+    sendResponse({ ok: true, enabled: extensionEnabled });
+    return false;
+  }
+  if (message?.type !== 'ASK_CHAT_DELTA') return false;
 
   const state = Array.from(popovers.values()).find(item => item.requestId === message.requestId);
   if (!state) return;
@@ -947,6 +676,18 @@ chrome.runtime.onMessage.addListener((message) => {
   stopWaitingRotation(state);
   state.content += message.chunk || '';
   updatePanelBodyContent(state.id, state.content);
+  return false;
+});
+
+chrome.storage.sync.get({ enabled: DEFAULT_OPTIONS.enabled }).then((stored) => {
+  extensionEnabled = Boolean(stored.enabled);
+  if (!extensionEnabled) clearUi();
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'sync' || !changes.enabled) return;
+  extensionEnabled = Boolean(changes.enabled.newValue);
+  if (!extensionEnabled) clearUi();
 });
 
 document.addEventListener('mouseup', (event) => {
@@ -957,6 +698,7 @@ document.addEventListener('mouseup', (event) => {
 document.addEventListener('keyup', handlePageSelection);
 
 document.addEventListener('keydown', (event) => {
+  if (!extensionEnabled) return;
   if (event.isComposing) return;
   const key = event.key.toLowerCase();
   if (event.key !== 'Enter' && key !== 't') return;
@@ -964,7 +706,7 @@ document.addEventListener('keydown', (event) => {
   const buttonPopovers = [...popovers.entries()].filter(([, state]) => state.mode === 'button');
   if (!buttonPopovers.length) return;
 
-  const target = event.target;
+  const target = event.target as HTMLElement;
   const isOtherInteractive = !isInsideAskChat(target) && (
     target.tagName === 'INPUT' ||
     target.tagName === 'TEXTAREA' ||
@@ -979,9 +721,11 @@ document.addEventListener('keydown', (event) => {
   }
 });
 document.addEventListener('pointerdown', (event) => {
-  const clickedAskChat = event.target.closest?.('[data-ask-chat-id]');
+  if (!extensionEnabled) return;
+  const eventTarget = event.target as HTMLElement;
+  const clickedAskChat = eventTarget.closest?.('[data-ask-chat-id]') as HTMLElement | null;
   const clickedAskChatId = clickedAskChat?.dataset?.askChatId || '';
-  const clickedActionMenu = event.target.closest?.('[data-ask-chat-menu-id]');
+  const clickedActionMenu = eventTarget.closest?.('[data-ask-chat-menu-id]');
   const clickedInsideAskChat = Boolean(clickedAskChat) || Boolean(clickedActionMenu);
   let closedButtonPopover = false;
   let closedPanelPopover = false;

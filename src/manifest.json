@@ -23,6 +23,6 @@
   },
   "action": {
     "default_title": "AskInPage",
-    "default_popup": "options/index.html"
+    "default_popup": "popup/index.html"
   }
 }

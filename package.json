@@ -5,12 +5,24 @@
   "description": "Select text on any page and ask an AI model for context-aware explanations or translations.",
   "scripts": {
     "dev": "node scripts/build-extension.mjs --watch",
-    "lint": "node scripts/validate-extension.mjs && node --check src/background/service-worker.js && node --check src/content/index.js && node --check src/options/index.js && node --check src/shared/options.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "node scripts/validate-extension.mjs && npm run typecheck",
     "build": "npm run lint && node scripts/build-extension.mjs",
     "package": "npm run build && node scripts/package-extension.mjs",
     "release": "node scripts/release.mjs"
   },
+  "dependencies": {
+    "lucide-react": "^1.25.0",
+    "markdown-to-jsx": "^9.8.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
   "devDependencies": {
+    "@types/chrome": "^0.1.1",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "esbuild": "^0.25.8",
+    "typescript": "^5.9.2",
     "web-ext": "^10.4.0"
   }
 }

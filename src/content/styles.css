@@ -2,7 +2,8 @@
   all: initial;
   position: fixed;
   z-index: 2147483647;
-  font-family: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Avenir Next", "Noto Sans SC", system-ui, sans-serif;
+  font-size: 14px;
 }
 
 #ask-chat-selection-root * {
@@ -35,7 +36,7 @@
   color: #2f3339;
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   text-align: left;
 }
@@ -75,7 +76,7 @@
   background: transparent;
   color: #2f3339;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -90,21 +91,19 @@
 .ask-chat-trigger button {
   height: 30px;
   padding: 0 12px;
-  border: 1px solid rgba(168, 174, 184, 0.72);
+  border: 1px solid #7656d8;
   border-radius: 6px;
-  background: linear-gradient(180deg, #ffffff 0%, #eef1f5 48%, #d9dde4 100%);
-  color: #2f3339;
+  background: #7656d8;
+  color: #fff;
   cursor: pointer;
-  font-family: "Avenir Next Condensed", "Gill Sans", "Trebuchet MS", sans-serif;
-  font-size: 13.5px;
+  font-family: inherit;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   line-height: 1;
 }
 
-.ask-chat-trigger button:hover {
-  background: linear-gradient(180deg, #ffffff 0%, #f5f7fa 46%, #e3e7ed 100%);
-}
+.ask-chat-trigger button:hover { background: #6544c5; }
 
 .ask-chat-panel {
   width: min(360px, calc(100vw - 24px));
@@ -146,22 +145,14 @@
 
 .ask-chat-panel.pinned .ask-chat-pin {
   transform: rotate(-42deg);
-  color: #2f6fdf;
-}
-
-.ask-chat-pin svg {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  display: block;
-  fill: currentColor;
+  color: #5817c7;
 }
 
 .ask-chat-header > span {
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -179,7 +170,7 @@
 
 .ask-chat-header-text > span:first-child {
   overflow: hidden;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -205,7 +196,7 @@
   color: #7d8492;
   cursor: pointer;
   font: inherit;
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -234,6 +225,48 @@
 
 .ask-chat-body p {
   margin: 0.55em 0;
+}
+
+.ask-chat-body h1,
+.ask-chat-body h2,
+.ask-chat-body h3,
+.ask-chat-body h4,
+.ask-chat-body h5,
+.ask-chat-body h6 {
+  margin: 0.8em 0 0.35em;
+  color: #202124;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ask-chat-body h1 { font-size: 1.22em; }
+.ask-chat-body h2 { font-size: 1.14em; }
+.ask-chat-body h3,
+.ask-chat-body h4,
+.ask-chat-body h5,
+.ask-chat-body h6 { font-size: 1.05em; }
+
+.ask-chat-body hr {
+  height: 1px;
+  margin: 0.8em 0;
+  border: 0;
+  background: #e0e4ec;
+}
+
+.ask-chat-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.65em 0;
+  border-radius: 6px;
+}
+
+.ask-chat-body input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  margin: 0 5px 0 0;
+  accent-color: #5817c7;
 }
 
 .ask-chat-body p:first-child,
@@ -299,7 +332,7 @@
   background: #f6f8fb;
   color: #202124;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.5;
   white-space: pre;
 }
@@ -312,7 +345,7 @@
 }
 
 .ask-chat-body a {
-  color: #2f6fdf;
+  color: #5817c7;
   text-decoration: none;
 }
 
@@ -331,7 +364,7 @@
   width: 100%;
   margin: 0.65em 0;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .ask-chat-body th,
@@ -363,7 +396,7 @@
   height: 16px;
   flex: 0 0 auto;
   border: 2px solid rgba(47, 111, 223, 0.2);
-  border-top-color: #2f6fdf;
+  border-top-color: #5817c7;
   border-radius: 50%;
   animation: ask-chat-spin 1.1s linear infinite;
 }

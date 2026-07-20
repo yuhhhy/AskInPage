@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Manifest V3 · Vanilla JavaScript · Chrome · Edge
+  Manifest V3 · React · TypeScript · Chrome · Edge
 </p>
 
 ## 功能概览
