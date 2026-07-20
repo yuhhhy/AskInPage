@@ -1,5 +1,6 @@
 node_modules/
-.web-ext-artifacts/
-.dist-tmp/
 dist/
 releases/
+.web-ext-artifacts/
+.dist-tmp/
+.DS_Store

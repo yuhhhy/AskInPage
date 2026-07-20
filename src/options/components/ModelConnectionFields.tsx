@@ -45,7 +45,7 @@ export function ModelConnectionFields({ connections, activeConnectionId, onSelec
 
       <div className="connection-editor">
         <div className="connection-editor-heading">
-          <div><h3>连接详情</h3><p>保存后用于下一次提问</p></div>
+          <div><h3>连接详情</h3></div>
           <button className="delete-connection-button" type="button" disabled={connections.length === 1} onClick={() => onRemove(activeConnection.id)}><Trash2 size={17} aria-hidden="true" />删除</button>
         </div>
 
@@ -82,7 +82,7 @@ export function ModelConnectionFields({ connections, activeConnectionId, onSelec
           }}
           placeholder={'gpt-4o-mini\ngpt-4.1-mini\n其他模型 ID'}
         />
-        <p className="field-help">每行填写一个模型 ID；不同服务可以使用各自的模型列表。</p>
+        <p className="field-help">不同模型名称之间分行；每行填写一个模型名；</p>
       </div>
     </div>
   );

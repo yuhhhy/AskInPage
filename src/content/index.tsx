@@ -29,9 +29,38 @@ const LOW_VALUE_SELECTOR = [
 let root: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
 let nextPopoverId = 1;
-let suppressNextSelection = false;
+let suppressNextKeyupSelection = false;
 let extensionEnabled = DEFAULT_OPTIONS.enabled;
 const popovers = new Map<string, PopoverState>();
+const observedShadowRoots = new Set<ShadowRoot>();
+const shadowObservers = new Map<ShadowRoot, MutationObserver>();
+let lastPointerGesture: PointerGesture | null = null;
+let nextPointerGestureId = 1;
+let lastProcessedGestureId = 0;
+let pendingSelectionTimer: number | null = null;
+let pendingSelectionRequest: SelectionRequest | null = null;
+
+interface PointerGesture {
+  id: number;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  startedInsideAskChat: boolean;
+}
+
+interface SelectionRequest {
+  eventTarget?: EventTarget | null;
+  eventPath: EventTarget[];
+  gesture: PointerGesture | null;
+  retry: boolean;
+}
+
+interface ActiveSelection {
+  selection: Selection;
+  text: string;
+  range: Range;
+}
 
 function ensureRoot(): HTMLDivElement {
   if (root) return root;
@@ -76,6 +105,161 @@ function clampPosition(rect, mode) {
 
 function normalizeText(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function getRootSelection(rootNode: Node | null): Selection | null {
+  const selectableRoot = rootNode as { getSelection?: () => Selection | null } | null;
+  try {
+    return selectableRoot?.getSelection?.() || null;
+  } catch {
+    return null;
+  }
+}
+
+function getSelectionText(selection: Selection, range: Range): string {
+  return normalizeText(selection.toString() || range.toString() || range.cloneContents().textContent || '');
+}
+
+function getComposedSelection(selection: Selection | null): ActiveSelection | null {
+  if (!selection || selection.isCollapsed) return null;
+  const selectionWithComposedRanges = selection as Selection & {
+    getComposedRanges?: (
+      options?: { shadowRoots?: ShadowRoot[] } | ShadowRoot,
+      ...legacyShadowRoots: ShadowRoot[]
+    ) => StaticRange[];
+  };
+  if (!selectionWithComposedRanges.getComposedRanges) return null;
+
+  let composedRanges: StaticRange[] = [];
+  try {
+    composedRanges = selectionWithComposedRanges.getComposedRanges({ shadowRoots: [...observedShadowRoots] });
+  } catch {
+    try {
+      composedRanges = selectionWithComposedRanges.getComposedRanges(...observedShadowRoots);
+    } catch {
+      return null;
+    }
+  }
+
+  for (const composedRange of composedRanges) {
+    try {
+      const range = document.createRange();
+      range.setStart(composedRange.startContainer, composedRange.startOffset);
+      range.setEnd(composedRange.endContainer, composedRange.endOffset);
+      const text = normalizeText(range.toString() || range.cloneContents().textContent || selection.toString());
+      if (text && !range.collapsed) {
+        return { selection: createSyntheticSelection(range, text), text, range };
+      }
+    } catch {
+      // The DOM may have changed after the StaticRange was captured.
+    }
+  }
+  return null;
+}
+
+function getActiveSelection(eventTarget?: EventTarget | null, eventPath: EventTarget[] = []): ActiveSelection | null {
+  const eventRoots = eventPath
+    .filter((item): item is Node => item instanceof Node)
+    .map(node => node.getRootNode())
+    .filter((item): item is ShadowRoot => item instanceof ShadowRoot);
+  const targetNode = eventTarget instanceof Node ? eventTarget : null;
+  const candidateRoots = [
+    targetNode?.getRootNode(),
+    ...eventRoots,
+    ...observedShadowRoots
+  ].filter(Boolean) as Node[];
+  const candidates = [
+    ...candidateRoots.map(getRootSelection),
+    window.getSelection(),
+    document.getSelection?.()
+  ].filter(Boolean) as Selection[];
+  const seen = new Set<Selection>();
+
+  for (const selection of candidates) {
+    if (seen.has(selection)) continue;
+    seen.add(selection);
+    if (selection.isCollapsed || selection.rangeCount === 0) continue;
+
+    const range = selection.getRangeAt(0);
+    const text = getSelectionText(selection, range);
+    if (!text) continue;
+
+    return {
+      selection,
+      text,
+      range
+    };
+  }
+
+  return getComposedSelection(window.getSelection()) || getComposedSelection(document.getSelection?.() || null);
+}
+
+function getCaretPosition(x: number, y: number): { offsetNode: Node; offset: number } | null {
+  const documentWithShadowCaret = document as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number,
+      options?: { shadowRoots?: ShadowRoot[] }
+    ) => { offsetNode: Node; offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+
+  try {
+    const position = documentWithShadowCaret.caretPositionFromPoint?.(
+      x,
+      y,
+      { shadowRoots: [...observedShadowRoots] }
+    );
+    if (position) return position;
+  } catch {
+    // Older Chromium versions do not accept the shadowRoots option.
+  }
+
+  const range = documentWithShadowCaret.caretRangeFromPoint?.(x, y);
+  return range ? { offsetNode: range.startContainer, offset: range.startOffset } : null;
+}
+
+function createSyntheticSelection(range: Range, text: string): Selection {
+  return {
+    anchorNode: range.startContainer,
+    anchorOffset: range.startOffset,
+    focusNode: range.endContainer,
+    focusOffset: range.endOffset,
+    isCollapsed: range.collapsed,
+    rangeCount: 1,
+    type: range.collapsed ? 'Caret' : 'Range',
+    toString: () => text,
+    getRangeAt: () => range
+  } as unknown as Selection;
+}
+
+function getGestureSelection(gesture: PointerGesture | null): ActiveSelection | null {
+  if (!gesture || gesture.startedInsideAskChat) return null;
+  if (Math.hypot(gesture.endX - gesture.startX, gesture.endY - gesture.startY) < 3) return null;
+
+  const start = getCaretPosition(gesture.startX, gesture.startY);
+  const end = getCaretPosition(gesture.endX, gesture.endY);
+  if (!start || !end || start.offsetNode.getRootNode() !== end.offsetNode.getRootNode()) return null;
+
+  const buildRange = (from: typeof start, to: typeof end) => {
+    const range = document.createRange();
+    range.setStart(from.offsetNode, from.offset);
+    range.setEnd(to.offsetNode, to.offset);
+    return range;
+  };
+
+  try {
+    let range = buildRange(start, end);
+    let text = normalizeText(range.toString() || range.cloneContents().textContent || '');
+    if (!text) {
+      range = buildRange(end, start);
+      text = normalizeText(range.toString() || range.cloneContents().textContent || '');
+    }
+    if (!text || range.collapsed) return null;
+    return { selection: createSyntheticSelection(range, text), text, range };
+  } catch {
+    return null;
+  }
 }
 
 function getRandomThinkingStatusIndex(excludedIndex = -1) {
@@ -370,12 +554,19 @@ function syncUi() {
 }
 
 function clearUi() {
+  cancelPendingSelection();
   for (const state of popovers.values()) {
     stopWaitingRotation(state);
     cancelActiveRequest(state);
   }
   popovers.clear();
   reactRoot?.render(<AskChatApp states={[]} actions={askChatActions} />);
+}
+
+function cancelPendingSelection() {
+  if (pendingSelectionTimer !== null) window.clearTimeout(pendingSelectionTimer);
+  pendingSelectionTimer = null;
+  pendingSelectionRequest = null;
 }
 
 const askChatActions: AskChatActions = {
@@ -599,44 +790,127 @@ async function startLookup(id: string, intent: Intent = 'explain') {
   }
 }
 
-function handlePageSelection() {
+function handlePageSelection(
+  eventTarget?: EventTarget | null,
+  eventPath: EventTarget[] = [],
+  gesture: PointerGesture | null = lastPointerGesture,
+  retry = true
+) {
   if (!extensionEnabled) return;
-  window.setTimeout(() => {
-    if (!extensionEnabled) return;
-    if (suppressNextSelection) {
-      suppressNextSelection = false;
-      return;
+  if (gesture && gesture.id === lastProcessedGestureId) return;
+
+  const activeSelection = getActiveSelection(eventTarget, eventPath) || getGestureSelection(gesture);
+  if (!activeSelection) {
+    if (retry) {
+      schedulePageSelection({ eventTarget, eventPath, gesture, retry: false }, 80);
     }
+    return;
+  }
 
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
-    if (isInsideAskChat(selection.anchorNode) || isInsideAskChat(selection.focusNode)) return;
-
-    const text = normalizeText(selection.toString());
-    if (!text) return;
-
-    const range = selection.getRangeAt(0);
-    const fallbackContext = buildFallbackSelectionContext(selection, text);
-    fallbackContext.formattedText = formatSelectionContext(fallbackContext);
-    const id = renderButton({
-      rect: getSelectionRect(range),
-      pageTitle: fallbackContext.page.title || document.title,
-      pageUrl: fallbackContext.page.url || location.href,
-      surroundingText: fallbackContext.formattedText,
-      text
-    });
-    window.setTimeout(() => {
-      const state = popovers.get(id);
-      if (!state) return;
-      const context = buildSafeSelectionContext(selection, text);
-      state.target = {
-        ...state.target,
-        pageTitle: context.page.title || document.title,
-        pageUrl: context.page.url || location.href,
-        surroundingText: context.formattedText
-      };
-    }, 0);
+  const { selection, text, range } = activeSelection;
+  if (isInsideAskChat(selection.anchorNode) || isInsideAskChat(selection.focusNode)) return;
+  if (gesture) lastProcessedGestureId = gesture.id;
+  const rect = getSelectionRect(range);
+  const fallbackContext = buildFallbackSelectionContext(selection, text);
+  fallbackContext.formattedText = formatSelectionContext(fallbackContext);
+  const id = renderButton({
+    rect,
+    pageTitle: fallbackContext.page.title || document.title,
+    pageUrl: fallbackContext.page.url || location.href,
+    surroundingText: fallbackContext.formattedText,
+    text
+  });
+  window.setTimeout(() => {
+    const state = popovers.get(id);
+    if (!state) return;
+    const context = buildSafeSelectionContext(selection, text);
+    state.target = {
+      ...state.target,
+      pageTitle: context.page.title || document.title,
+      pageUrl: context.page.url || location.href,
+      surroundingText: context.formattedText
+    };
   }, 0);
+}
+
+function schedulePageSelection(request: SelectionRequest, delay = 32) {
+  pendingSelectionRequest = request;
+  if (pendingSelectionTimer !== null) window.clearTimeout(pendingSelectionTimer);
+  pendingSelectionTimer = window.setTimeout(() => {
+    pendingSelectionTimer = null;
+    const pendingRequest = pendingSelectionRequest;
+    pendingSelectionRequest = null;
+    if (!pendingRequest) return;
+    handlePageSelection(
+      pendingRequest.eventTarget,
+      pendingRequest.eventPath,
+      pendingRequest.gesture,
+      pendingRequest.retry
+    );
+  }, delay);
+}
+
+function getEventPath(event: Event): EventTarget[] {
+  return typeof event.composedPath === 'function' ? event.composedPath() : [event.target].filter(Boolean) as EventTarget[];
+}
+
+function eventIsInsideAskChat(event: Event): boolean {
+  return getEventPath(event).some(item => item instanceof Node && isInsideAskChat(item));
+}
+
+function handleSelectionPointerUp(event: PointerEvent | MouseEvent) {
+  const eventPath = getEventPath(event);
+  if (eventIsInsideAskChat(event) || lastPointerGesture?.startedInsideAskChat) return;
+
+  const gesture = lastPointerGesture
+    ? { ...lastPointerGesture, endX: event.clientX, endY: event.clientY }
+    : null;
+  schedulePageSelection({
+    eventTarget: eventPath[0] || event.target,
+    eventPath,
+    gesture,
+    retry: true
+  });
+}
+
+function observeAddedShadowHosts(node: Node) {
+  if (!(node instanceof Element)) return;
+  registerShadowRoot(node.shadowRoot);
+  node.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
+
+  // Web components often attach their shadow root shortly after being inserted.
+  for (const delay of [50, 250, 1000, 2500]) {
+    window.setTimeout(() => {
+      registerShadowRoot(node.shadowRoot);
+      node.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
+    }, delay);
+  }
+}
+
+function registerShadowRoot(shadowRoot: ShadowRoot | null) {
+  if (!shadowRoot || observedShadowRoots.has(shadowRoot)) return;
+  observedShadowRoots.add(shadowRoot);
+  shadowRoot.addEventListener('pointerup', handleSelectionPointerUp, true);
+  shadowRoot.addEventListener('mouseup', handleSelectionPointerUp, true);
+  shadowRoot.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
+
+  const observer = new MutationObserver(mutations => {
+    for (const mutation of mutations) {
+      mutation.addedNodes.forEach(observeAddedShadowHosts);
+    }
+  });
+  observer.observe(shadowRoot, { childList: true, subtree: true });
+  shadowObservers.set(shadowRoot, observer);
+}
+
+function startShadowRootDiscovery() {
+  document.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
+  const observer = new MutationObserver(mutations => {
+    for (const mutation of mutations) {
+      mutation.addedNodes.forEach(observeAddedShadowHosts);
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 function handlePanelSelection(id) {
@@ -690,12 +964,23 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (!extensionEnabled) clearUi();
 });
 
-document.addEventListener('mouseup', (event) => {
-  if (isInsideAskChat(event.target)) return;
-  handlePageSelection();
-});
+startShadowRootDiscovery();
 
-document.addEventListener('keyup', handlePageSelection);
+document.addEventListener('pointerup', handleSelectionPointerUp, true);
+document.addEventListener('mouseup', handleSelectionPointerUp, true);
+
+document.addEventListener('keyup', (event) => {
+  if (suppressNextKeyupSelection) {
+    suppressNextKeyupSelection = false;
+    return;
+  }
+  schedulePageSelection({
+    eventTarget: event.target,
+    eventPath: getEventPath(event),
+    gesture: null,
+    retry: true
+  });
+}, true);
 
 document.addEventListener('keydown', (event) => {
   if (!extensionEnabled) return;
@@ -715,31 +1000,35 @@ document.addEventListener('keydown', (event) => {
   if (isOtherInteractive || (key === 't' && isInsideAskChat(target))) return;
 
   event.preventDefault();
-  suppressNextSelection = true;
+  suppressNextKeyupSelection = true;
   for (const [id] of buttonPopovers) {
     startLookup(id, key === 't' ? 'translate' : 'explain');
   }
 });
 document.addEventListener('pointerdown', (event) => {
   if (!extensionEnabled) return;
+  cancelPendingSelection();
+  const eventPath = getEventPath(event);
+  lastPointerGesture = {
+    id: nextPointerGestureId++,
+    startX: event.clientX,
+    startY: event.clientY,
+    endX: event.clientX,
+    endY: event.clientY,
+    startedInsideAskChat: eventPath.some(item => item instanceof Node && isInsideAskChat(item))
+  };
   const eventTarget = event.target as HTMLElement;
   const clickedAskChat = eventTarget.closest?.('[data-ask-chat-id]') as HTMLElement | null;
   const clickedAskChatId = clickedAskChat?.dataset?.askChatId || '';
   const clickedActionMenu = eventTarget.closest?.('[data-ask-chat-menu-id]');
   const clickedInsideAskChat = Boolean(clickedAskChat) || Boolean(clickedActionMenu);
-  let closedButtonPopover = false;
   let closedPanelPopover = false;
 
-  if (closeButtonPopovers(clickedAskChatId)) {
-    closedButtonPopover = true;
-  }
+  closeButtonPopovers(clickedAskChatId);
 
   if (clickedInsideAskChat) {
     if (!clickedActionMenu) {
       closeActionMenus();
-    }
-    if (closedButtonPopover) {
-      suppressNextSelection = true;
     }
     return;
   }
@@ -751,9 +1040,6 @@ document.addEventListener('pointerdown', (event) => {
     }
   }
   closeActionMenus();
-  if (closedButtonPopover || closedPanelPopover) {
-    suppressNextSelection = true;
-  }
   if (closedPanelPopover) {
     window.getSelection()?.removeAllRanges();
   }

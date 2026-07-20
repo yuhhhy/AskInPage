@@ -5,7 +5,7 @@ export function SettingsHeader() {
     <header className="settings-header">
       <div>
         <div className="settings-title"><SlidersHorizontal size={24} aria-hidden="true" /><h1>AskInPage 设置</h1></div>
-        <p>让划词提问更贴近当前语境</p>
+        <p>更方便易用的的网页模型</p>
       </div>
     </header>
   );
