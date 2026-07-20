@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Ask in Page — Demo</title>
-  <!-- mock-chrome.js must load before content.js -->
+  <title>AskInPage — Demo</title>
+  <!-- The Chrome API mock must load before the content script. -->
   <script src="mock-chrome.js"></script>
-  <link rel="stylesheet" href="../content.css">
+  <link rel="stylesheet" href="../src/content/styles.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -217,7 +217,7 @@
 <body>
 
 <div id="demo-bar">
-  <span class="brand">Ask in Page</span>
+  <span class="brand">AskInPage</span>
   <span class="hint">选中任意文字即可触发 · 按 T 翻译</span>
   <button id="settings-btn">⚙ 设置 API</button>
 </div>
@@ -365,6 +365,6 @@ Answer</pre>
   });
 </script>
 
-<script src="../content.js"></script>
+<script src="../src/content/index.js"></script>
 </body>
 </html>

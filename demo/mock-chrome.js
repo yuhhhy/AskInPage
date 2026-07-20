@@ -94,7 +94,7 @@
             const content = await callApi(msg.payload);
             if (content.trim()) { resolve({ ok: true, data: { content } }); return; }
           } catch (e) {
-            console.warn('[Ask in Page Demo] API unavailable, using demo mode:', e.message);
+            console.warn('[AskInPage Demo] API unavailable, using demo mode:', e.message);
           }
 
           const demoText = (DEMO[intent] || DEMO.explain)(selectedText);

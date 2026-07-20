@@ -1,76 +1,91 @@
-# Ask in Page
+# AskInPage
 
-Chrome 插件：在任意网页选中文字，即可用你自己的 AI API Key 获得即时解释或翻译。
+AskInPage 是一个基于 Manifest V3 的 Chrome / Edge 扩展。在任意网页选中文字，即可使用自己的 AI API Key 获得即时解释或翻译。
 
 ## 功能
 
-- **解释词语/短语**：选中后点击弹出按钮，200 字以内的维基百科式解释
-- **解释一段话**：结合当前页面上下文，500 字以内说清楚这句话的意思
-- **翻译**：选中后按 `T`，直接翻译（中↔英互译）
-- **追加提问**：在弹出框的输入框里打字，按 Enter 追加自定义问题
-- **流式输出**：回答边生成边显示
-- **可拖拽、可固定**：回答面板可拖动位置，点击图钉锁定不自动关闭
-- 支持任意 OpenAI-compatible Chat Completions API
-- API Key 存储在 Chrome `storage.sync`，不经过任何第三方服务器
+- 解释词语、短语或段落，并结合当前页面上下文消除歧义
+- 选中文字后按 `T`，在中英文之间快速翻译
+- 在回答面板中追加问题，支持流式输出
+- 回答面板可拖拽、固定、复制和重新生成
+- 支持 OpenAI-compatible Chat Completions API
+- API Key 保存在浏览器的 `storage.sync` 中，不经过中间服务器
 
-## 安装
+## 项目结构
 
-> 目前未上架 Chrome Web Store，需手动加载。
+```text
+AskInPage/
+├── src/                         # 可直接加载的扩展源码
+│   ├── manifest.json            # Manifest V3 清单
+│   ├── background/
+│   │   └── service-worker.js    # 请求模型、转发流式响应
+│   ├── content/
+│   │   ├── index.js             # 网页选区与回答面板
+│   │   └── styles.css           # 注入页面的样式
+│   ├── options/
+│   │   ├── index.html           # 扩展弹窗与设置页
+│   │   └── index.js
+│   └── shared/
+│       └── options.js           # background/options 共用默认配置
+├── demo/                        # 不安装扩展也能预览交互的演示页
+├── dist/                        # npm run build 生成的发布包（不提交）
+├── package.json
+└── README.md
+```
 
-1. 下载或克隆本仓库到本地
-2. 打开 Chrome，访问 `chrome://extensions`
-3. 右上角开启 **Developer mode**
-4. 点击 **Load unpacked**，选择本仓库根目录
-5. 点击工具栏扩展图标，填写 Base URL、Model 和 API Key，保存
+`src` 本身就是完整的扩展根目录，不需要编译后才能调试。发布时再将它校验并打成 zip。
+
+## 本地安装
+
+### Chrome
+
+1. 打开 `chrome://extensions`
+2. 开启右上角的“开发者模式”
+3. 点击“加载已解压的扩展程序”
+4. 选择本项目的 `src` 目录
+
+### Edge
+
+1. 打开 `edge://extensions`
+2. 开启“开发人员模式”
+3. 点击“加载解压缩的扩展”
+4. 选择本项目的 `src` 目录
+
+加载后点击工具栏中的 AskInPage 图标，填写 Base URL、Model 和 API Key。
 
 ## 配置示例
 
-| 服务 | Base URL | 推荐模型 |
-|------|----------|----------|
+| 服务 | Base URL | 模型示例 |
+| --- | --- | --- |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
 | DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
 | 本地 Ollama | `http://localhost:11434/v1` | `qwen2.5:7b` |
 
-Base URL 填到 `/v1` 即可，插件会自动补全 `/chat/completions`。
+Base URL 填到 `/v1` 即可，也可以直接填写完整的 `/chat/completions` 地址。
 
-## 快捷操作
-
-| 操作 | 行为 |
-|------|------|
-| 选中文字 | 出现 Ask 按钮 |
-| 点击 Ask 按钮 | 解释选中内容 |
-| 按 `Enter`（焦点在输入框时）| 带追加问题发送 |
-| 按 `T` | 翻译选中内容 |
-| 右键回答面板 | 复制 / 重新生成 |
-
-## 本地开发
-
-**热重载**（改代码自动重载插件）：
+## 开发与发布
 
 ```bash
 npm install
 npm run dev
 ```
 
-`npm run dev` 会用 [web-ext](https://github.com/mozilla/web-ext) 启动一个独立 Chrome 窗口，加载本插件。每次保存文件后插件自动重载，无需手动刷新。
-
-**Demo 页面**（在浏览器里预览 UI，无需安装插件）：
-
-直接用浏览器打开 `demo/index.html`，或者用任意静态服务器：
+开发命令会启动一个加载了 `src` 的独立 Chromium 窗口，并在文件变化后自动重载扩展。
 
 ```bash
-npx serve . -l 3000
-# 访问 http://localhost:3000/demo/
+npm run lint
+npm run build
 ```
 
-Demo 页面使用模拟 Chrome API 运行，默认显示示例回答。如果本地跑了 Ollama，在页面右上角设置面板里填入 `http://localhost:11434/v1` 即可调用真实模型。
+- `npm run lint`：检查扩展清单和源码是否符合 WebExtension 规范
+- `npm run build`：校验后在 `dist` 中生成可发布的 zip 包
+
+演示页面可以直接打开 `demo/index.html`，或在项目根目录启动任意静态服务器。演示模式默认返回示例内容；也可以连接允许跨域访问的本地 Ollama。
 
 ## 权限说明
 
-- `storage`：保存你的 API Key 和设置
-- `host_permissions: <all_urls>`：在所有网页注入选区按钮
-
-模型请求由扩展 background service worker 直接发出，绕过网页自身的 CORS 限制，你的 API Key 不经过任何中间服务器。
+- `storage`：保存 API Key 和用户设置
+- `host_permissions: <all_urls>`：在网页中注入选区交互，并向用户配置的模型服务发送请求
 
 ## License
 

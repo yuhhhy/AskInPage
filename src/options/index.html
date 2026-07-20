@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>AskInPage 设置</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <h1>AskInPage</h1>
+    <label for="apiBaseUrl">OpenAI-compatible Base URL</label>
+    <input id="apiBaseUrl" placeholder="https://api.openai.com/v1">
+
+    <label for="model">Model</label>
+    <input id="model" placeholder="gpt-4o-mini">
+
+    <label for="apiKey">API Key</label>
+    <input id="apiKey" type="password" placeholder="sk-...">
+
+    <label for="temperature">Temperature</label>
+    <input id="temperature" type="number" min="0" max="2" step="0.1" placeholder="0.2">
+
+    <div class="toggle-row">
+      <label for="enableAnswerFormatInstruction">启用自定义回答要求</label>
+      <input id="enableAnswerFormatInstruction" type="checkbox">
+    </div>
+
+    <label for="answerFormatInstruction">自定义回答要求</label>
+    <textarea id="answerFormatInstruction" placeholder="例如：用三条 bullet 回答；中英双语；先给结论再解释。"></textarea>
+
+    <button id="save" type="button">Save</button>
+    <p class="hint">支持 OpenAI-compatible Chat Completions。Base URL 填到 /v1 即可，也可以填完整 /chat/completions。</p>
+    <div id="status" class="status"></div>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

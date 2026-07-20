@@ -1,11 +1,4 @@
-const DEFAULT_OPTIONS = {
-  apiBaseUrl: 'https://api.openai.com/v1',
-  apiKey: '',
-  model: 'gpt-4o-mini',
-  temperature: 0.2,
-  enableAnswerFormatInstruction: true,
-  answerFormatInstruction: ''
-};
+import { DEFAULT_OPTIONS } from '../shared/options.js';
 
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
 const REQUEST_IDLE_TIMEOUT_MS = 45000;

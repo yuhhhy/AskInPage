@@ -1,25 +1,28 @@
 {
   "manifest_version": 3,
-  "name": "Ask in Page",
+  "name": "AskInPage",
   "version": "0.1.0",
   "description": "Select text on any page and instantly ask an AI model for explanation or translation.",
   "permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "background/service-worker.js",
     "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "js": ["content/index.js"],
+      "css": ["content/styles.css"],
       "run_at": "document_idle"
     }
   ],
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options/index.html",
+    "open_in_tab": true
+  },
   "action": {
-    "default_title": "Ask in Page",
-    "default_popup": "options.html"
+    "default_title": "AskInPage",
+    "default_popup": "options/index.html"
   }
 }
