@@ -1,6 +1,6 @@
 {
   "name": "askinpage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Select text on any page and ask an AI model for context-aware explanations or translations.",
   "scripts": {
