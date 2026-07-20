@@ -1,92 +1,60 @@
-# AskInPage
+<h1 align="center">AskInPage</h1>
 
-AskInPage 是一个基于 Manifest V3 的 Chrome / Edge 扩展。在任意网页选中文字，即可使用自己的 AI API Key 获得即时解释或翻译。
+<p align="center">
+  在任意网页选中文字，获得结合页面上下文的 AI 解释或翻译
+</p>
 
-## 功能
+<p align="center">
+  划一下，问一下，少一点跳转
+</p>
 
-- 解释词语、短语或段落，并结合当前页面上下文消除歧义
-- 选中文字后按 `T`，在中英文之间快速翻译
-- 在回答面板中追加问题，支持流式输出
-- 回答面板可拖拽、固定、复制和重新生成
-- 支持 OpenAI-compatible Chat Completions API
-- API Key 保存在浏览器的 `storage.sync` 中，不经过中间服务器
+<p align="center">
+  Manifest V3 · Vanilla JavaScript · Chrome · Edge
+</p>
 
-## 项目结构
+## 功能概览
 
-```text
-AskInPage/
-├── src/                         # 可直接加载的扩展源码
-│   ├── manifest.json            # Manifest V3 清单
-│   ├── background/
-│   │   └── service-worker.js    # 请求模型、转发流式响应
-│   ├── content/
-│   │   ├── index.js             # 网页选区与回答面板
-│   │   └── styles.css           # 注入页面的样式
-│   ├── options/
-│   │   ├── index.html           # 扩展弹窗与设置页
-│   │   └── index.js
-│   └── shared/
-│       └── options.js           # background/options 共用默认配置
-├── demo/                        # 不安装扩展也能预览交互的演示页
-├── dist/                        # npm run build 生成的发布包（不提交）
-├── package.json
-└── README.md
-```
+### 💬 上下文解释
 
-`src` 本身就是完整的扩展根目录，不需要编译后才能调试。发布时再将它校验并打成 zip。
+选中网页中的词语、短语或段落后，AskInPage 会读取附近的页面文字，结合上下文解释选中内容，减少术语歧义和来回搜索。
+
+### 🌐 快捷翻译
+
+选中文字后按下 `T` 即可翻译。中文内容会被翻译为英文，其他语言会被翻译为中文，并尽量保留原文的语气、术语和 Markdown 格式。
+
+### ✍️ 追加提问
+
+选中文字后，可以直接输入自己的问题。AskInPage 会同时参考选中文字、附近内容和追加问题生成回答。
+
+### 回答面板
+
+- 支持流式输出
+- 支持拖拽和固定位置
+- 右键可以复制回答或重新生成
+- 可以选中回答中的内容继续提问
+
+## 安全与权限
+
+- API Key 和用户设置保存在浏览器中，不经过中间服务器
+- 扩展会读取选中文字及相关页面文字，并将其发送至用户配置的模型服务。请勿在涉及敏感信息或有严格隐私要求的场景中使用
 
 ## 本地安装
 
-### Chrome
-
-1. 打开 `chrome://extensions`
-2. 开启右上角的“开发者模式”
+1. 打开 Chrome 的 `chrome://extensions` 或 Edge 的 `edge://extensions`
+2. 开启“开发者模式”
 3. 点击“加载已解压的扩展程序”
-4. 选择本项目的 `src` 目录
-
-### Edge
-
-1. 打开 `edge://extensions`
-2. 开启“开发人员模式”
-3. 点击“加载解压缩的扩展”
-4. 选择本项目的 `src` 目录
-
-加载后点击工具栏中的 AskInPage 图标，填写 Base URL、Model 和 API Key。
-
-## 配置示例
-
-| 服务 | Base URL | 模型示例 |
-| --- | --- | --- |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| 本地 Ollama | `http://localhost:11434/v1` | `qwen2.5:7b` |
-
-Base URL 填到 `/v1` 即可，也可以直接填写完整的 `/chat/completions` 地址。
+4. 运行 `npm run build`，然后选择本项目生成的 `dist` 目录
 
 ## 开发与发布
 
 ```bash
 npm install
-npm run dev
-```
-
-开发命令会启动一个加载了 `src` 的独立 Chromium 窗口，并在文件变化后自动重载扩展。
-
-```bash
 npm run lint
 npm run build
 ```
 
-- `npm run lint`：检查扩展清单和源码是否符合 WebExtension 规范
-- `npm run build`：校验后在 `dist` 中生成可发布的 zip 包
+发布新版本时，只需在干净的 `main` 分支执行：
 
-演示页面可以直接打开 `demo/index.html`，或在项目根目录启动任意静态服务器。演示模式默认返回示例内容；也可以连接允许跨域访问的本地 Ollama。
-
-## 权限说明
-
-- `storage`：保存 API Key 和用户设置
-- `host_permissions: <all_urls>`：在网页中注入选区交互，并向用户配置的模型服务发送请求
-
-## License
-
-MIT
+```bash
+npm run release -- major
+```
