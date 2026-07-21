@@ -57,7 +57,7 @@
   "enableCustomInstructions": { "message": "启用自定义回答要求" },
   "customInstructionsHelp": { "message": "附加到每次解释和翻译请求" },
   "customInstructions": { "message": "自定义回答要求" },
-  "customInstructionsPlaceholder": { "message": "例如：用三条 bullet 回答；中英双语；先给结论再解释。" },
+  "customInstructionsPlaceholder": { "message": "例如：先给结论，再用 3 个要点解释；翻译时保留专业术语。" },
   "translationTarget": { "message": "默认翻译目标语言" },
   "translationTargetHelp": { "message": "每次触发翻译时使用" },
   "translationTargetUi": { "message": "跟随界面语言" },

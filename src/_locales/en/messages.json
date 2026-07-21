@@ -57,7 +57,7 @@
   "enableCustomInstructions": { "message": "Enable custom answer instructions" },
   "customInstructionsHelp": { "message": "Appended to every explanation and translation request" },
   "customInstructions": { "message": "Custom answer instructions" },
-  "customInstructionsPlaceholder": { "message": "For example: Use three bullet points; answer bilingually; give the conclusion first." },
+  "customInstructionsPlaceholder": { "message": "Example: Start with the answer, then explain in 3 bullets; keep technical terms when translating." },
   "translationTarget": { "message": "Default translation target" },
   "translationTargetHelp": { "message": "Used whenever you trigger Translate" },
   "translationTargetUi": { "message": "Follow interface language" },
