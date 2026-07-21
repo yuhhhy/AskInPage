@@ -5,6 +5,7 @@ import { ModelConnectionFields } from '../components/ModelConnectionFields';
 import { PanelPreferenceFields } from '../components/PanelPreferenceFields';
 import { SettingsHeader } from '../components/SettingsHeader';
 import { SettingsSection } from '../components/SettingsSection';
+import { ShortcutPreferenceFields } from '../components/ShortcutPreferenceFields';
 import { useExtensionOptions } from '../hooks/useExtensionOptions';
 
 export function OptionsPage() {
@@ -38,7 +39,11 @@ export function OptionsPage() {
           <PanelPreferenceFields options={options} onChange={updateOption} />
         </SettingsSection>
 
-        <SettingsSection index="04" title="数据管理" titleId="data-title">
+        <SettingsSection index="04" title="快捷键" titleId="shortcut-title">
+          <ShortcutPreferenceFields options={options} onChange={updateOption} />
+        </SettingsSection>
+
+        <SettingsSection index="05" title="数据管理" titleId="data-title">
           <DataManagementFields onExport={exportOptions} onImport={importOptions} />
         </SettingsSection>
 

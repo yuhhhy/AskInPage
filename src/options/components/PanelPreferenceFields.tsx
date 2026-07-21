@@ -25,7 +25,7 @@ export function PanelPreferenceFields({ options, onChange }: PanelPreferenceFiel
         <div className="preference-heading">
           <div>
             <label id="panel-position-label">AskChat 操作框位置</label>
-            <small>选择操作框相对选中文字出现的方向，四个方向使用相同间距。</small>
+            <small>选择操作框相对选中文字出现的方向。</small>
           </div>
         </div>
 

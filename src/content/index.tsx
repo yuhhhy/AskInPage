@@ -1,6 +1,7 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { DEFAULT_OPTIONS } from '../shared/options';
 import type { ColorMode, ThemeColor, TriggerPlacement } from '../shared/options';
+import { matchesKeyboardShortcut, normalizeKeyboardShortcut } from '../shared/shortcuts';
 import { AskChatApp, type AskChatActions } from './components/AskChatApp';
 import { THINKING_STATUS_INTERVAL_MS, THINKING_STATUS_MESSAGES } from './constants';
 import type { Intent, PanelSize, PanelStatus, PopoverState, Position, SelectionContext, SelectionTarget, ViewportRect } from './types';
@@ -30,7 +31,7 @@ const LOW_VALUE_SELECTOR = [
 let root: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
 let nextPopoverId = 1;
-let suppressNextKeyupSelection = false;
+const suppressedShortcutKeyups = new Set<string>();
 let extensionEnabled = DEFAULT_OPTIONS.enabled;
 let colorMode: ColorMode = DEFAULT_OPTIONS.colorMode;
 let superMode = DEFAULT_OPTIONS.superMode;
@@ -39,6 +40,10 @@ let layoutPreferences = {
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   width: DEFAULT_OPTIONS.panelWidth,
   height: DEFAULT_OPTIONS.panelHeight
+};
+let shortcutPreferences = {
+  translate: DEFAULT_OPTIONS.translateShortcut,
+  ask: DEFAULT_OPTIONS.askShortcut
 };
 const popovers = new Map<string, PopoverState>();
 const observedShadowRoots = new Set<ShadowRoot>();
@@ -986,7 +991,9 @@ const CONTENT_PREFERENCE_DEFAULTS = {
   themeColor: DEFAULT_OPTIONS.themeColor,
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   panelWidth: DEFAULT_OPTIONS.panelWidth,
-  panelHeight: DEFAULT_OPTIONS.panelHeight
+  panelHeight: DEFAULT_OPTIONS.panelHeight,
+  translateShortcut: DEFAULT_OPTIONS.translateShortcut,
+  askShortcut: DEFAULT_OPTIONS.askShortcut
 };
 
 function clampStoredNumber(value: unknown, fallback: number, min: number, max: number) {
@@ -1019,6 +1026,10 @@ function applyContentPreferences(stored: Record<string, unknown>) {
   const panelSizeChanged = nextLayoutPreferences.width !== layoutPreferences.width
     || nextLayoutPreferences.height !== layoutPreferences.height;
   layoutPreferences = nextLayoutPreferences;
+  shortcutPreferences = {
+    translate: normalizeKeyboardShortcut(stored.translateShortcut, DEFAULT_OPTIONS.translateShortcut),
+    ask: normalizeKeyboardShortcut(stored.askShortcut, DEFAULT_OPTIONS.askShortcut)
+  };
 
   if (!extensionEnabled) {
     clearUi();
@@ -1038,7 +1049,7 @@ chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreference
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') return;
-  const relevantKeys = ['enabled', 'colorMode', 'superMode', 'themeColor', 'triggerPlacement', 'panelWidth', 'panelHeight'];
+  const relevantKeys = ['enabled', 'colorMode', 'superMode', 'themeColor', 'triggerPlacement', 'panelWidth', 'panelHeight', 'translateShortcut', 'askShortcut'];
   if (!relevantKeys.some(key => changes[key])) return;
   chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
 });
@@ -1197,9 +1208,27 @@ document.documentElement.addEventListener('keydown', (event) => {
 document.addEventListener('pointerup', handleSelectionPointerUp, true);
 document.addEventListener('mouseup', handleSelectionPointerUp, true);
 
+function getShortcutKeyupToken(code: string): string {
+  if (code.startsWith('Control')) return 'Control';
+  if (code.startsWith('Alt')) return 'Alt';
+  if (code.startsWith('Shift')) return 'Shift';
+  if (code.startsWith('Meta')) return 'Meta';
+  return code;
+}
+
+function rememberShortcutKeyups(event: KeyboardEvent) {
+  suppressedShortcutKeyups.add(event.code);
+  if (event.ctrlKey) suppressedShortcutKeyups.add('Control');
+  if (event.altKey) suppressedShortcutKeyups.add('Alt');
+  if (event.shiftKey) suppressedShortcutKeyups.add('Shift');
+  if (event.metaKey) suppressedShortcutKeyups.add('Meta');
+}
+
 document.addEventListener('keyup', (event) => {
-  if (suppressNextKeyupSelection) {
-    suppressNextKeyupSelection = false;
+  const shortcutKeyupToken = getShortcutKeyupToken(event.code);
+  if (suppressedShortcutKeyups.delete(shortcutKeyupToken)) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
     return;
   }
   schedulePageSelection({
@@ -1213,26 +1242,30 @@ document.addEventListener('keyup', (event) => {
 document.addEventListener('keydown', (event) => {
   if (!extensionEnabled) return;
   if (event.isComposing) return;
-  const key = event.key.toLowerCase();
-  if (event.key !== 'Enter' && key !== 't') return;
+  const intent: Intent | null = matchesKeyboardShortcut(event, shortcutPreferences.translate)
+    ? 'translate'
+    : matchesKeyboardShortcut(event, shortcutPreferences.ask) ? 'explain' : null;
+  if (!intent) return;
 
   const buttonPopovers = [...popovers.entries()].filter(([, state]) => state.mode === 'button');
   if (!buttonPopovers.length) return;
 
-  const target = event.target as HTMLElement;
-  const isOtherInteractive = !isInsideAskChat(target) && (
-    target.tagName === 'INPUT' ||
-    target.tagName === 'TEXTAREA' ||
-    target.contentEditable === 'true'
-  );
-  if (isOtherInteractive || (key === 't' && isInsideAskChat(target))) return;
+  const isEditing = getEventPath(event).some(item => item instanceof HTMLElement && (
+    item.tagName === 'INPUT' ||
+    item.tagName === 'TEXTAREA' ||
+    item.isContentEditable
+  ));
+  if (isEditing) return;
 
   event.preventDefault();
-  suppressNextKeyupSelection = true;
+  event.stopImmediatePropagation();
+  rememberShortcutKeyups(event);
   for (const [id] of buttonPopovers) {
-    startLookup(id, key === 't' ? 'translate' : 'explain');
+    startLookup(id, intent);
   }
-});
+}, true);
+
+window.addEventListener('blur', () => suppressedShortcutKeyups.clear());
 document.addEventListener('pointerdown', (event) => {
   if (!extensionEnabled) return;
   cancelPendingSelection();

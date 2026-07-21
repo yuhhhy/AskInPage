@@ -1,3 +1,9 @@
+import {
+  DEFAULT_ASK_SHORTCUT,
+  DEFAULT_TRANSLATE_SHORTCUT,
+  normalizeKeyboardShortcut
+} from './shortcuts';
+
 export interface ApiConnection {
   id: string;
   name: string;
@@ -24,6 +30,8 @@ export interface ExtensionOptions {
   triggerPlacement: TriggerPlacement;
   panelWidth: number;
   panelHeight: number;
+  translateShortcut: string;
+  askShortcut: string;
 }
 
 export const DEFAULT_CONNECTION: ApiConnection = Object.freeze({
@@ -47,7 +55,9 @@ export const DEFAULT_OPTIONS: ExtensionOptions = Object.freeze({
   answerFormatInstruction: '',
   triggerPlacement: 'bottom-right',
   panelWidth: 360,
-  panelHeight: 360
+  panelHeight: 360,
+  translateShortcut: DEFAULT_TRANSLATE_SHORTCUT,
+  askShortcut: DEFAULT_ASK_SHORTCUT
 });
 
 export const STORAGE_DEFAULTS: Record<string, unknown> = {
@@ -63,6 +73,8 @@ export const STORAGE_DEFAULTS: Record<string, unknown> = {
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   panelWidth: DEFAULT_OPTIONS.panelWidth,
   panelHeight: DEFAULT_OPTIONS.panelHeight,
+  translateShortcut: DEFAULT_OPTIONS.translateShortcut,
+  askShortcut: DEFAULT_OPTIONS.askShortcut,
   apiBaseUrl: '',
   apiKey: '',
   model: '',
@@ -135,7 +147,9 @@ export function normalizeExtensionOptions(stored: Record<string, unknown>): Exte
       ? triggerPlacement as TriggerPlacement
       : DEFAULT_OPTIONS.triggerPlacement,
     panelWidth: Number.isFinite(panelWidth) ? Math.round(Math.min(720, Math.max(300, panelWidth))) : DEFAULT_OPTIONS.panelWidth,
-    panelHeight: Number.isFinite(panelHeight) ? Math.round(Math.min(720, Math.max(220, panelHeight))) : DEFAULT_OPTIONS.panelHeight
+    panelHeight: Number.isFinite(panelHeight) ? Math.round(Math.min(720, Math.max(220, panelHeight))) : DEFAULT_OPTIONS.panelHeight,
+    translateShortcut: normalizeKeyboardShortcut(stored.translateShortcut, DEFAULT_OPTIONS.translateShortcut),
+    askShortcut: normalizeKeyboardShortcut(stored.askShortcut, DEFAULT_OPTIONS.askShortcut)
   };
 }
 

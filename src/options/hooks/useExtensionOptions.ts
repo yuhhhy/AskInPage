@@ -80,6 +80,11 @@ export function useExtensionOptions() {
   }
 
   async function saveOptions() {
+    if (options.translateShortcut === options.askShortcut) {
+      setStatus('保存失败：翻译和 Ask Chat 不能使用相同的快捷键');
+      window.setTimeout(() => setStatus(''), 2600);
+      return;
+    }
     const normalizedConnections = options.connections.map((connection, index) => {
       const model = connection.model.trim() || connection.models[0] || DEFAULT_CONNECTION.model;
       return {
