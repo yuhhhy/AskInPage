@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DEFAULT_OPTIONS, getActiveConnection, type ApiConnection, type ColorMode, type ThemeColor } from '../../shared/options';
 import { getPublicOptions, loadExtensionOptions } from '../../shared/storage';
+import { getUiLanguage, setUiLanguagePreference } from '../../shared/i18n';
 
 interface PopupState {
   enabled: boolean;
@@ -55,6 +56,8 @@ export function usePopupState() {
 
     async function loadState(includeSupport = false) {
       const options = getPublicOptions(await loadExtensionOptions());
+      setUiLanguagePreference(options.uiLanguage);
+      document.documentElement.lang = getUiLanguage();
       const supported = includeSupport
         ? await isSupportedTab((await chrome.tabs.query({ active: true, currentWindow: true }))[0])
         : undefined;
@@ -99,7 +102,7 @@ export function usePopupState() {
     setState((current) => ({ ...current, [key]: value }));
     try {
       const response = await chrome.runtime.sendMessage({ type: 'ASK_CHAT_SET_PREFERENCE', key, value });
-      if (!response?.ok) throw new Error(response?.error || '设置保存失败');
+      if (!response?.ok) throw new Error(response?.errorCode || 'SETTINGS_SAVE_FAILED');
     } catch {
       // Keep a direct-storage fallback for browsers that are waking a newly updated service worker.
       await chrome.storage.sync.set({ [key]: value });

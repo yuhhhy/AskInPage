@@ -175,6 +175,7 @@ textarea:disabled { background: var(--disabled-surface); color: var(--disabled-t
   cursor: pointer;
 }
 .field-help { margin-top: 7px; color: var(--muted); font-size: var(--font-xs); }
+.field-with-help small { display: block; margin-top: 7px; color: var(--muted); font-size: var(--font-xs); }
 
 .privacy-disclosure { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 11px; margin-top: 24px; padding: 14px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--accent-soft); color: var(--accent-text); }
 .privacy-disclosure > svg { margin-top: 1px; }
@@ -233,7 +234,7 @@ textarea:disabled { background: var(--disabled-surface); color: var(--disabled-t
 .data-copy { max-width: 560px; }
 .data-copy h3 { margin: 0; font-size: var(--font-md); }
 .data-copy p { margin-top: 5px; color: var(--muted); line-height: 1.65; }
-.security-note { display: flex; width: fit-content; align-items: center; gap: 8px; margin-top: 14px; padding: 9px 11px; border: 1px solid #f1bf43; border-radius: 7px; background: #fff1bf; color: #854600; font-size: var(--font-xs); font-weight: 700; }
+.security-note { display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 8px; margin-top: 14px; padding: 9px 11px; overflow-wrap: anywhere; border: 1px solid #f1bf43; border-radius: 7px; background: #fff1bf; color: #854600; font-size: var(--font-xs); font-weight: 700; }
 .settings-shell[data-mode="dark"] .security-note { border-color: #9a6711; background: #49340e; color: #ffd66e; }
 .data-actions { display: flex; flex: 0 0 auto; gap: 9px; }
 .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer; font-size: var(--font-sm); font-weight: 650; transition: border-color 140ms ease, color 140ms ease, background 140ms ease; }

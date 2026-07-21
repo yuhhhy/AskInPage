@@ -1,15 +1,38 @@
-import { isLoopbackApiUrl, normalizeChatCompletionsUrl } from '../shared/api-url';
+import { getApiBaseUrlError, isLoopbackApiUrl, normalizeChatCompletionsUrl } from '../shared/api-url';
+import type { ErrorCode, ErrorResponse } from '../shared/errors';
+import { setUiLanguagePreference } from '../shared/i18n';
 import { DEFAULT_CONNECTION, DEFAULT_OPTIONS, getActiveConnection } from '../shared/options';
+import { getInterfaceResponseLanguage, getTranslationResponseLanguage } from '../shared/prompts/language';
+import { buildPromptMessages } from '../shared/prompts';
 import { loadExtensionOptions } from '../shared/storage';
-import { buildPromptMessages } from './prompts';
 
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
 const REQUEST_IDLE_TIMEOUT_MS = 45000;
 const activeRequests = new Map();
 const POPUP_PREFERENCE_KEYS = new Set(['enabled', 'colorMode', 'superMode', 'quickMode', 'themeColor']);
 
+class ExtensionRequestError extends Error {
+  constructor(public readonly code: ErrorCode, public readonly details = '') {
+    super(code);
+    this.name = 'ExtensionRequestError';
+  }
+}
+
+function toErrorResponse(error: unknown): ErrorResponse {
+  if (error instanceof ExtensionRequestError) {
+    return { ok: false, errorCode: error.code, ...(error.details ? { errorDetails: error.details } : {}) };
+  }
+  if (error instanceof TypeError) return { ok: false, errorCode: 'NETWORK_ERROR' };
+  return { ok: false, errorCode: 'MODEL_REQUEST_FAILED' };
+}
+
+function toPreferenceErrorResponse(error: unknown): ErrorResponse {
+  if (error instanceof ExtensionRequestError) return toErrorResponse(error);
+  return { ok: false, errorCode: 'SETTINGS_SAVE_FAILED' };
+}
+
 async function saveAndBroadcastPreference(key, value) {
-  if (!POPUP_PREFERENCE_KEYS.has(key)) throw new Error('不支持的设置项');
+  if (!POPUP_PREFERENCE_KEYS.has(key)) throw new ExtensionRequestError('UNSUPPORTED_PREFERENCE');
   await chrome.storage.sync.set({ [key]: value });
   const tabs = await chrome.tabs.query({});
   await Promise.allSettled(tabs
@@ -26,7 +49,7 @@ async function getOptions() {
 
 async function readOpenAiStream(response, onChunk, onActivity) {
   if (!response.body) {
-    throw new Error('模型没有返回可读取的流式内容');
+    throw new ExtensionRequestError('STREAM_UNAVAILABLE');
   }
 
   const reader = response.body.getReader();
@@ -64,9 +87,13 @@ async function readOpenAiStream(response, onChunk, onActivity) {
 
 async function explainSelection(payload, sender) {
   const options = await getOptions();
+  setUiLanguagePreference(options.uiLanguage);
   const connection = getActiveConnection(options);
   if (!connection.apiKey && !isLoopbackApiUrl(connection.apiBaseUrl)) {
-    throw new Error('请先在扩展设置中填写 API Key');
+    throw new ExtensionRequestError('API_KEY_MISSING');
+  }
+  if (!connection.model.trim() || getApiBaseUrlError(connection.apiBaseUrl)) {
+    throw new ExtensionRequestError('INVALID_MODEL_CONFIG');
   }
 
   const controller = new AbortController();
@@ -90,12 +117,12 @@ async function explainSelection(payload, sender) {
   const resetIdleTimer = () => {
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
-      abortWithMessage('模型长时间没有返回新内容，请稍后重试或切换模型');
+      abortWithMessage('REQUEST_IDLE_TIMEOUT');
     }, REQUEST_IDLE_TIMEOUT_MS);
   };
 
   totalTimer = setTimeout(() => {
-    abortWithMessage('模型生成超时，请稍后重试或缩短选中文本');
+    abortWithMessage('REQUEST_TIMEOUT');
   }, REQUEST_TOTAL_TIMEOUT_MS);
   resetIdleTimer();
   activeRequests.set(payload.requestId, { controller, clearTimers });
@@ -116,20 +143,16 @@ async function explainSelection(payload, sender) {
           ...payload,
           quickMode: options.quickMode,
           answerFormatInstruction: options.answerFormatInstruction,
-          enableAnswerFormatInstruction: options.enableAnswerFormatInstruction
+          enableAnswerFormatInstruction: options.enableAnswerFormatInstruction,
+          responseLanguage: payload.intent === 'translate'
+            ? getTranslationResponseLanguage(options.translationTarget)
+            : getInterfaceResponseLanguage()
         })
       })
     });
 
     if (!res.ok) {
-      let message = `模型请求失败：HTTP ${res.status}`;
-      try {
-        const data = await res.json();
-        message = data?.error?.message || data?.error || message;
-      } catch {
-        // Keep status fallback.
-      }
-      throw new Error(message);
+      throw new ExtensionRequestError('MODEL_REQUEST_FAILED', `HTTP ${res.status}`);
     }
 
     let content = '';
@@ -144,13 +167,13 @@ async function explainSelection(payload, sender) {
     }, resetIdleTimer);
 
     if (!content.trim()) {
-      throw new Error('模型没有返回内容，请稍后重试或切换模型');
+      throw new ExtensionRequestError('EMPTY_MODEL_RESPONSE');
     }
 
     return { content };
   } catch (error) {
     if (abortMessage && error.name === 'AbortError') {
-      throw new Error(abortMessage);
+      throw new ExtensionRequestError(abortMessage as ErrorCode);
     }
     throw error;
   } finally {
@@ -163,7 +186,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'ASK_CHAT_SET_PREFERENCE') {
     saveAndBroadcastPreference(message.key, message.value)
       .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: error.message || '设置保存失败' }));
+      .catch((error) => sendResponse(toPreferenceErrorResponse(error)));
     return true;
   }
 
@@ -185,7 +208,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ ok: false, cancelled: true });
         return;
       }
-      sendResponse({ ok: false, error: error.message || '解释失败' });
+      sendResponse(toErrorResponse(error));
     });
 
   return true;

@@ -3,6 +3,7 @@ import { BasicSettings } from '../components/BasicSettings';
 import { ModelSelector } from '../components/ModelSelector';
 import { SupportNotice } from '../components/SupportNotice';
 import { usePopupState } from '../hooks/usePopupState';
+import { t } from '../../shared/i18n';
 
 const GITHUB_URL = 'https://github.com/yuhhhy/AskInPage';
 
@@ -16,7 +17,7 @@ export function PopupPage() {
           <h1>AskInPage</h1>
         </div>
         <div className="header-actions">
-          <button className="icon-button settings-button" type="button" aria-label="打开设置" title="设置" onClick={() => chrome.runtime.openOptionsPage()}><Settings size={21} /></button>
+          <button className="icon-button settings-button" type="button" aria-label={t('openSettings')} title={t('settings')} onClick={() => chrome.runtime.openOptionsPage()}><Settings size={21} /></button>
         </div>
       </header>
 

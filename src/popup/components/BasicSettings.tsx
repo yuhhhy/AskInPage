@@ -1,4 +1,5 @@
 import type { ColorMode, ThemeColor } from '../../shared/options';
+import { t } from '../../shared/i18n';
 import { ToggleSwitch } from './ToggleSwitch';
 
 interface BasicSettingsProps {
@@ -14,32 +15,32 @@ interface BasicSettingsProps {
   onThemeColorChange: (value: ThemeColor) => void;
 }
 
-const THEMES: Array<{ value: ThemeColor; label: string }> = [
-  { value: 'purple', label: '经典紫' },
-  { value: 'blue', label: '湖水蓝' },
-  { value: 'green', label: '松柏绿' },
-  { value: 'orange', label: '暖橙' },
-  { value: 'rose', label: '莓果红' }
+const THEMES: Array<{ value: ThemeColor; labelKey: string }> = [
+  { value: 'purple', labelKey: 'themePurple' },
+  { value: 'blue', labelKey: 'themeBlue' },
+  { value: 'green', labelKey: 'themeGreen' },
+  { value: 'orange', labelKey: 'themeOrange' },
+  { value: 'rose', labelKey: 'themeRose' }
 ];
 
 export function BasicSettings(props: BasicSettingsProps) {
   return (
     <section className="basic-settings" aria-labelledby="basic-settings-title">
       <div className="section-title">
-        <h2 id="basic-settings-title">基础设置</h2>
+        <h2 id="basic-settings-title">{t('basicSettings')}</h2>
       </div>
       <div className="preference-list">
-        <ToggleSwitch id="extension-enabled" checked={props.enabled} label="插件开关" description="控制网页划词功能" onChange={props.onEnabledChange} />
-        <ToggleSwitch id="dark-mode" checked={props.colorMode === 'dark'} label="夜间阅读" description="回答弹窗使用深色外观" onChange={(checked) => props.onColorModeChange(checked ? 'dark' : 'light')} />
-        <ToggleSwitch id="super-mode" checked={props.superMode} label="超级模式" description="禁用网页按钮和链接，允许选择其中的文字" onChange={props.onSuperModeChange} />
-        <ToggleSwitch id="quick-mode" checked={props.quickMode} label="快速模式" description="仅提供当前段落和选中文字，会削弱回答效果和准确性" onChange={props.onQuickModeChange} />
+        <ToggleSwitch id="extension-enabled" checked={props.enabled} label={t('extensionToggle')} description={t('extensionToggleDescription')} onChange={props.onEnabledChange} />
+        <ToggleSwitch id="dark-mode" checked={props.colorMode === 'dark'} label={t('darkMode')} description={t('darkModeDescription')} onChange={(checked) => props.onColorModeChange(checked ? 'dark' : 'light')} />
+        <ToggleSwitch id="super-mode" checked={props.superMode} label={t('superMode')} description={t('superModeDescription')} onChange={props.onSuperModeChange} />
+        <ToggleSwitch id="quick-mode" checked={props.quickMode} label={t('quickMode')} description={t('quickModeDescription')} onChange={props.onQuickModeChange} />
       </div>
       <div className="theme-picker">
         <div>
-          <strong>主题颜色</strong>
-          <small>选择界面的强调色</small>
+          <strong>{t('themeColor')}</strong>
+          <small>{t('themeColorDescription')}</small>
         </div>
-        <div className="theme-swatches" role="radiogroup" aria-label="主题颜色">
+        <div className="theme-swatches" role="radiogroup" aria-label={t('themeColor')}>
           {THEMES.map((theme) => (
             <button
               key={theme.value}
@@ -47,8 +48,8 @@ export function BasicSettings(props: BasicSettingsProps) {
               type="button"
               role="radio"
               aria-checked={props.themeColor === theme.value}
-              aria-label={theme.label}
-              title={theme.label}
+              aria-label={t(theme.labelKey)}
+              title={t(theme.labelKey)}
               onClick={() => props.onThemeColorChange(theme.value)}
             />
           ))}

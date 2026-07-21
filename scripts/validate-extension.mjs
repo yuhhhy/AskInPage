@@ -25,8 +25,24 @@ async function assertSourceFile(relativePath, label) {
 }
 
 assert(manifest.manifest_version === 3, 'manifest_version must be 3');
-assert(manifest.name === 'AskInPage', 'Extension name must be AskInPage');
+assert(manifest.name === '__MSG_extensionName__', 'Extension name must use chrome.i18n');
+assert(manifest.description === '__MSG_extensionDescription__', 'Extension description must use chrome.i18n');
+assert(manifest.action?.default_title === '__MSG_actionTitle__', 'Action title must use chrome.i18n');
+assert(manifest.default_locale === 'en', 'default_locale must be en');
 assert(Array.isArray(manifest.permissions), 'permissions must be an array');
+
+const localeMessages = {};
+for (const locale of ['en', 'zh_CN']) {
+  const localePath = resolve(sourceRoot, '_locales', locale, 'messages.json');
+  localeMessages[locale] = JSON.parse(await readFile(localePath, 'utf8'));
+  for (const key of ['extensionName', 'extensionDescription', 'actionTitle']) {
+    assert(localeMessages[locale][key]?.message, `${locale} is missing ${key}`);
+  }
+}
+assert(
+  JSON.stringify(Object.keys(localeMessages.en).sort()) === JSON.stringify(Object.keys(localeMessages.zh_CN).sort()),
+  'en and zh_CN locale keys must match'
+);
 
 await assertSourceFile(manifest.background?.service_worker, 'background.service_worker');
 await assertSourceFile(manifest.options_ui?.page, 'options_ui.page');

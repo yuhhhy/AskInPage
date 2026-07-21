@@ -4,6 +4,7 @@ import {
   type ApiConnection,
   type ExtensionOptions
 } from './options';
+import { setUiLanguagePreference } from './i18n';
 
 const LOCAL_API_KEYS_KEY = 'connectionApiKeys';
 
@@ -53,6 +54,7 @@ export async function loadExtensionOptions(): Promise<ExtensionOptions> {
     chrome.storage.local.get({ [LOCAL_API_KEYS_KEY]: {} })
   ]);
   const storedWithLegacyKey = { ...stored, ...legacyApiKey };
+  setUiLanguagePreference(storedWithLegacyKey.uiLanguage);
   const normalized = normalizeExtensionOptions(storedWithLegacyKey);
   const localApiKeys = local[LOCAL_API_KEYS_KEY] && typeof local[LOCAL_API_KEYS_KEY] === 'object'
     ? local[LOCAL_API_KEYS_KEY] as ConnectionApiKeys
@@ -77,6 +79,7 @@ export async function loadExtensionOptions(): Promise<ExtensionOptions> {
 
 export async function saveExtensionOptions(options: ExtensionOptions): Promise<ExtensionOptions> {
   await restrictLocalStorageAccess();
+  setUiLanguagePreference(options.uiLanguage);
   const normalized = normalizeExtensionOptions(options as unknown as Record<string, unknown>);
   const connectionApiKeys = getConnectionApiKeys(normalized.connections);
   const syncedOptions = {

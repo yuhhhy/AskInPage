@@ -1,6 +1,7 @@
 import { Copy, RefreshCw } from 'lucide-react';
 import type { PopoverState } from '../types';
 import type { AskChatActions } from './types';
+import { t } from '../../shared/i18n';
 
 interface ActionMenuProps {
   state: PopoverState;
@@ -19,11 +20,11 @@ export function ActionMenu({ state, actions }: ActionMenuProps) {
         actions.closeActionMenus();
       }}>
         <Copy aria-hidden="true" />
-        <span>复制</span>
+        <span>{t('copy')}</span>
       </button>
       <button type="button" onClick={() => { actions.closeActionMenus(); actions.startLookup(state.id, state.intent); }}>
         <RefreshCw aria-hidden="true" />
-        <span>重新生成</span>
+        <span>{t('regenerate')}</span>
       </button>
     </div>
   );

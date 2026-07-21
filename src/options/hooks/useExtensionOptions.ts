@@ -9,12 +9,19 @@ import {
   type ExtensionOptions
 } from '../../shared/options';
 import { loadExtensionOptions, saveExtensionOptions as persistExtensionOptions } from '../../shared/storage';
+import { getUiLanguage, normalizeUiLanguagePreference, setUiLanguagePreference, t } from '../../shared/i18n';
+
+function getLocalizedApiUrlError(code: string): string {
+  if (code === 'invalid') return t('apiUrlInvalid');
+  if (code === 'https-required') return t('apiUrlHttpsRequired');
+  return t('apiUrlUnsupportedProtocol');
+}
 
 function createConnection(index: number): ApiConnection {
   return {
     ...DEFAULT_CONNECTION,
     id: `connection-${Date.now().toString(36)}-${index}`,
-    name: `服务 ${index}`,
+    name: t('defaultServiceName', String(index)),
     apiBaseUrl: '',
     apiKey: '',
     models: [...DEFAULT_CONNECTION.models]
@@ -32,12 +39,18 @@ export function useExtensionOptions() {
       changes: Record<string, chrome.storage.StorageChange>,
       areaName: string
     ) => {
-      if (areaName !== 'sync' || !changes.colorMode) return;
+      if (areaName !== 'sync' || (!changes.colorMode && !changes.uiLanguage)) return;
 
       setOptions((current) => ({
         ...current,
-        colorMode: changes.colorMode.newValue === 'dark' ? 'dark' : 'light'
+        ...(changes.colorMode ? { colorMode: changes.colorMode.newValue === 'dark' ? 'dark' : 'light' } : {}),
+        ...(changes.uiLanguage ? { uiLanguage: normalizeUiLanguagePreference(changes.uiLanguage.newValue) } : {})
       }));
+      if (changes.uiLanguage) {
+        setUiLanguagePreference(changes.uiLanguage.newValue || DEFAULT_OPTIONS.uiLanguage);
+        document.documentElement.lang = getUiLanguage();
+        document.title = t('optionsPageTitle');
+      }
     };
 
     chrome.storage.onChanged.addListener(handleStorageChange);
@@ -45,6 +58,11 @@ export function useExtensionOptions() {
   }, []);
 
   function updateOption<Key extends keyof ExtensionOptions>(key: Key, value: ExtensionOptions[Key]) {
+    if (key === 'uiLanguage') {
+      setUiLanguagePreference(value as ExtensionOptions['uiLanguage']);
+      document.documentElement.lang = getUiLanguage();
+      document.title = t('optionsPageTitle');
+    }
     setOptions((current) => ({ ...current, [key]: value }));
   }
 
@@ -80,7 +98,7 @@ export function useExtensionOptions() {
 
   async function saveOptions() {
     if (options.translateShortcut === options.askShortcut) {
-      setStatus('保存失败：翻译和 Ask Chat 不能使用相同的快捷键');
+      setStatus(t('shortcutSaveFailed'));
       window.setTimeout(() => setStatus(''), 2600);
       return;
     }
@@ -88,7 +106,7 @@ export function useExtensionOptions() {
       const model = connection.model.trim() || connection.models[0] || DEFAULT_CONNECTION.model;
       return {
         ...connection,
-        name: connection.name.trim() || `服务 ${index + 1}`,
+        name: connection.name.trim() || t('defaultServiceName', String(index + 1)),
         apiBaseUrl: connection.apiBaseUrl.trim() || DEFAULT_CONNECTION.apiBaseUrl,
         apiKey: connection.apiKey.trim(),
         model,
@@ -97,14 +115,14 @@ export function useExtensionOptions() {
     });
     const invalidConnection = normalizedConnections.find((connection) => getApiBaseUrlError(connection.apiBaseUrl));
     if (invalidConnection) {
-      setStatus(`${invalidConnection.name}：${getApiBaseUrlError(invalidConnection.apiBaseUrl)}`);
+      setStatus(t('invalidConnection', [invalidConnection.name, getLocalizedApiUrlError(getApiBaseUrlError(invalidConnection.apiBaseUrl))]));
       window.setTimeout(() => setStatus(''), 3200);
       return;
     }
     const nextOptions = normalizeExtensionOptions({ ...options, connections: normalizedConnections });
 
     setOptions(await persistExtensionOptions(nextOptions));
-    setStatus('设置已保存');
+    setStatus(t('settingsSaved'));
     window.setTimeout(() => setStatus(''), 1600);
   }
 
@@ -122,7 +140,7 @@ export function useExtensionOptions() {
     anchor.download = `askinpage-settings-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    setStatus('配置已导出');
+    setStatus(t('settingsExported'));
     window.setTimeout(() => setStatus(''), 1600);
   }
 
@@ -138,10 +156,14 @@ export function useExtensionOptions() {
       const imported = normalizeExtensionOptions(source);
       const invalidConnection = imported.connections.find((connection) => getApiBaseUrlError(connection.apiBaseUrl));
       if (invalidConnection) throw new Error(getApiBaseUrlError(invalidConnection.apiBaseUrl));
-      setOptions(await persistExtensionOptions(imported));
-      setStatus('配置已导入并生效');
+      const persisted = await persistExtensionOptions(imported);
+      setUiLanguagePreference(persisted.uiLanguage);
+      document.documentElement.lang = getUiLanguage();
+      document.title = t('optionsPageTitle');
+      setOptions(persisted);
+      setStatus(t('settingsImported'));
     } catch {
-      setStatus('导入失败：请选择有效的 AskInPage JSON 配置');
+      setStatus(t('invalidImport'));
     }
     window.setTimeout(() => setStatus(''), 2600);
   }

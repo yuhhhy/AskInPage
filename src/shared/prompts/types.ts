@@ -11,6 +11,7 @@ export interface PromptInput {
   quickMode?: boolean;
   answerFormatInstruction?: string;
   enableAnswerFormatInstruction?: boolean;
+  responseLanguage: string;
 }
 
 export interface PromptMessage {

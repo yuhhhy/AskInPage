@@ -6,7 +6,9 @@ const projectRoot = resolve(import.meta.dirname, '..');
 const outputRoot = resolve(projectRoot, 'dist');
 const releasesRoot = resolve(projectRoot, 'releases');
 const manifest = JSON.parse(await readFile(resolve(outputRoot, 'manifest.json'), 'utf8'));
-const filename = `${manifest.name}-${manifest.version}.zip`;
+const defaultMessages = JSON.parse(await readFile(resolve(outputRoot, '_locales', manifest.default_locale, 'messages.json'), 'utf8'));
+const packageName = defaultMessages.extensionName?.message || 'AskInPage';
+const filename = `${packageName}-${manifest.version}.zip`;
 const webExtCli = resolve(projectRoot, 'node_modules/web-ext/bin/web-ext.js');
 
 await mkdir(releasesRoot, { recursive: true });

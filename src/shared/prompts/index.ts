@@ -5,7 +5,5 @@ import type { PromptInput, PromptMessage } from './types';
 export type { PromptInput, PromptIntent, PromptMessage } from './types';
 
 export function buildPromptMessages(input: PromptInput): PromptMessage[] {
-  return input.intent === 'translate'
-    ? buildTranslateMessages(input)
-    : buildExplainMessages(input);
+  return input.intent === 'translate' ? buildTranslateMessages(input) : buildExplainMessages(input);
 }

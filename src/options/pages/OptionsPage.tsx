@@ -8,6 +8,7 @@ import { SettingsHeader } from '../components/SettingsHeader';
 import { SettingsSection } from '../components/SettingsSection';
 import { ShortcutPreferenceFields } from '../components/ShortcutPreferenceFields';
 import { useExtensionOptions } from '../hooks/useExtensionOptions';
+import { t } from '../../shared/i18n';
 
 export function OptionsPage() {
   const { options, status, updateOption, selectConnection, updateConnection, addConnection, removeConnection, saveOptions, exportOptions, importOptions } = useExtensionOptions();
@@ -21,7 +22,7 @@ export function OptionsPage() {
     <main className="settings-shell" data-mode={options.colorMode} data-theme={options.themeColor}>
       <SettingsHeader />
       <form onSubmit={handleSubmit}>
-        <SettingsSection index="01" title="模型服务" titleId="connection-title">
+        <SettingsSection index="01" title={t('sectionModelService')} titleId="connection-title">
           <ModelConnectionFields
             connections={options.connections}
             activeConnectionId={options.activeConnectionId}
@@ -33,23 +34,23 @@ export function OptionsPage() {
           <PrivacyDisclosure />
         </SettingsSection>
 
-        <SettingsSection index="02" title="回答偏好" titleId="answer-title">
+        <SettingsSection index="02" title={t('sectionAnswerPreferences')} titleId="answer-title">
           <AnswerPreferenceFields options={options} onChange={updateOption} />
         </SettingsSection>
 
-        <SettingsSection index="03" title="弹窗布局" titleId="panel-title">
+        <SettingsSection index="03" title={t('sectionPanelLayout')} titleId="panel-title">
           <PanelPreferenceFields options={options} onChange={updateOption} />
         </SettingsSection>
 
-        <SettingsSection index="04" title="快捷键" titleId="shortcut-title">
+        <SettingsSection index="04" title={t('sectionShortcuts')} titleId="shortcut-title">
           <ShortcutPreferenceFields options={options} onChange={updateOption} />
         </SettingsSection>
 
-        <SettingsSection index="05" title="数据管理" titleId="data-title">
+        <SettingsSection index="05" title={t('sectionDataManagement')} titleId="data-title">
           <DataManagementFields onExport={exportOptions} onImport={importOptions} />
         </SettingsSection>
 
-        <button className="save-button" type="submit">保存设置</button>
+        <button className="save-button" type="submit">{t('saveSettings')}</button>
         <div className="status" role="status" aria-live="polite">{status}</div>
       </form>
     </main>

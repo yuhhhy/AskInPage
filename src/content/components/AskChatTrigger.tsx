@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { PopoverState } from '../types';
 import type { AskChatActions } from './types';
+import { t } from '../../shared/i18n';
 
 interface AskChatTriggerProps {
   state: PopoverState;
@@ -26,7 +27,7 @@ export function AskChatTrigger({ state, actions }: AskChatTriggerProps) {
       data-ask-chat-id={state.id}
       style={{ ...position, maxWidth }}
     >
-      <button type="button" onClick={() => actions.startLookup(state.id, 'explain')}>Ask Chat</button>
+      <button type="button" onClick={() => actions.startLookup(state.id, 'explain')}>{t('askChat')}</button>
       <input
         ref={inputRef}
         type="text"
@@ -37,8 +38,8 @@ export function AskChatTrigger({ state, actions }: AskChatTriggerProps) {
           event.preventDefault();
           actions.startLookup(state.id, 'explain');
         }}
-        placeholder="Ask more..."
-        aria-label="Ask Chat custom prompt"
+        placeholder={t('askMorePlaceholder')}
+        aria-label={t('askMoreAriaLabel')}
       />
     </div>
   );

@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { Pin, X } from 'lucide-react';
-import { THINKING_STATUS_MESSAGES } from '../constants';
+import { THINKING_STATUS_MESSAGE_KEYS } from '../constants';
 import type { PopoverState, Position } from '../types';
 import { MarkdownContent } from './MarkdownContent';
 import type { AskChatActions } from './types';
+import { t } from '../../shared/i18n';
 
 interface AskChatPanelProps {
   state: PopoverState;
@@ -11,9 +12,9 @@ interface AskChatPanelProps {
 }
 
 function getStatusText(state: PopoverState): string {
-  if (state.status === 'loading') return state.intent === 'translate' ? '正在翻译' : '正在询问模型';
-  if (state.status === 'error') return state.intent === 'translate' ? '翻译失败' : '解释失败';
-  return state.intent === 'translate' ? '翻译完成' : 'Ask Chat';
+  if (state.status === 'loading') return state.intent === 'translate' ? t('translating') : t('askingModel');
+  if (state.status === 'error') return state.intent === 'translate' ? t('translationFailed') : t('explanationFailed');
+  return state.intent === 'translate' ? t('translationComplete') : t('askChat');
 }
 
 function clampPanelPosition(left: number, top: number, panel: HTMLElement): Position {
@@ -71,13 +72,13 @@ export function AskChatPanel({ state, actions }: AskChatPanelProps) {
       onContextMenu={(event) => { event.preventDefault(); actions.showActionMenu(state.id, event.clientX, event.clientY); }}
     >
       <div className="ask-chat-header" onPointerDown={beginDrag} onPointerMove={movePanel} onPointerUp={endDrag} onPointerCancel={endDrag}>
-        <button type="button" className="ask-chat-pin" aria-label={state.pinned ? 'Unpin Ask Chat popup' : 'Pin Ask Chat popup'} aria-pressed={state.pinned} title={state.pinned ? 'Unpin' : 'Pin'} onClick={() => actions.togglePinned(state.id)}>
+        <button type="button" className="ask-chat-pin" aria-label={state.pinned ? t('unpinPanel') : t('pinPanel')} aria-pressed={state.pinned} title={state.pinned ? t('unpin') : t('pin')} onClick={() => actions.togglePinned(state.id)}>
           <Pin size={17} aria-hidden="true" />
         </button>
         {state.userPrompt ? (
           <div className="ask-chat-header-text"><span title={state.target.text}>「{state.target.text}」</span><span className="ask-chat-user-prompt" title={state.userPrompt}>{state.userPrompt}</span></div>
         ) : <span title={state.target.text}>「{state.target.text}」</span>}
-        <button type="button" aria-label="Close" onClick={() => actions.closePopover(state.id)}><X size={18} aria-hidden="true" /></button>
+        <button type="button" aria-label={t('close')} onClick={() => actions.closePopover(state.id)}><X size={18} aria-hidden="true" /></button>
       </div>
 
       <div className="ask-chat-meta">{getStatusText(state)}</div>
@@ -94,7 +95,7 @@ export function AskChatPanel({ state, actions }: AskChatPanelProps) {
       >
         {state.content ? <MarkdownContent content={state.content} streaming={state.status === 'loading'} />
           : state.status === 'error' ? <span className="ask-chat-error">{state.error}</span>
-            : <span className="ask-chat-muted ask-chat-waiting"><span className="ask-chat-waiting-spinner" aria-hidden="true" /><span>{THINKING_STATUS_MESSAGES[state.waitingIndex]}</span></span>}
+            : <span className="ask-chat-muted ask-chat-waiting"><span className="ask-chat-waiting-spinner" aria-hidden="true" /><span>{t(THINKING_STATUS_MESSAGE_KEYS[state.waitingIndex])}</span></span>}
       </div>
     </section>
   );

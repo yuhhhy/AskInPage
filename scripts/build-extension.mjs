@@ -21,6 +21,7 @@ async function prepareOutput(root) {
   await mkdir(resolve(root, 'popup'), { recursive: true });
   await mkdir(resolve(root, 'background'), { recursive: true });
   await mkdir(resolve(root, 'icons'), { recursive: true });
+  await cp(resolve(projectRoot, 'src/_locales'), resolve(root, '_locales'), { recursive: true });
   await cp(resolve(projectRoot, 'src/manifest.json'), resolve(root, 'manifest.json'));
   await cp(resolve(projectRoot, 'src/content/styles.css'), resolve(root, 'content/styles.css'));
   await cp(resolve(projectRoot, 'src/options/styles.css'), resolve(root, 'options/styles.css'));

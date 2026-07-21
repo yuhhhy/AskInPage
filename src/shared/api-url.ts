@@ -17,13 +17,13 @@ export function getApiBaseUrlError(value: string): string {
   try {
     url = new URL(text);
   } catch {
-    return '模型服务地址格式不正确';
+    return 'invalid';
   }
 
   if (url.protocol === 'https:') return '';
   if (url.protocol === 'http:' && isLoopbackApiUrl(text)) return '';
-  if (url.protocol === 'http:') return '远程模型服务必须使用 HTTPS；只有本机回环地址可以使用 HTTP';
-  return '模型服务地址仅支持 HTTPS，或本机回环地址的 HTTP';
+  if (url.protocol === 'http:') return 'https-required';
+  return 'unsupported-protocol';
 }
 
 export function normalizeChatCompletionsUrl(value: string, fallback: string): string {

@@ -1,9 +1,11 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { DEFAULT_OPTIONS } from '../shared/options';
+import { getLocalizedError } from '../shared/errors';
+import { setUiLanguagePreference, t } from '../shared/i18n';
 import type { ColorMode, ThemeColor, TriggerPlacement } from '../shared/options';
 import { matchesKeyboardShortcut, normalizeKeyboardShortcut } from '../shared/shortcuts';
 import { AskChatApp, type AskChatActions } from './components/AskChatApp';
-import { THINKING_STATUS_INTERVAL_MS, THINKING_STATUS_MESSAGES } from './constants';
+import { THINKING_STATUS_INTERVAL_MS, THINKING_STATUS_MESSAGE_KEYS } from './constants';
 import type { Intent, PanelSize, PanelStatus, PopoverState, Position, SelectionContext, SelectionTarget, ViewportRect } from './types';
 
 const ASK_CHAT_ROOT_ID = 'ask-chat-selection-root';
@@ -325,11 +327,11 @@ function getGestureSelection(gesture: PointerGesture | null): ActiveSelection | 
 }
 
 function getRandomThinkingStatusIndex(excludedIndex = -1) {
-  if (THINKING_STATUS_MESSAGES.length <= 1) return 0;
+  if (THINKING_STATUS_MESSAGE_KEYS.length <= 1) return 0;
 
   let nextIndex = excludedIndex;
   while (nextIndex === excludedIndex) {
-    nextIndex = Math.floor(Math.random() * THINKING_STATUS_MESSAGES.length);
+    nextIndex = Math.floor(Math.random() * THINKING_STATUS_MESSAGE_KEYS.length);
   }
 
   return nextIndex;
@@ -475,13 +477,13 @@ function getSelectionStructure(selection, block) {
   const codeBlock = element?.closest?.('pre, code');
 
   return [
-    `所在标签：${block?.tagName?.toLowerCase() || 'unknown'}`,
-    link && `链接地址：${link.href}`,
-    button && '位于按钮/可点击控件中',
-    tableCell && '位于表格单元格中',
-    tableRow && '位于表格行中',
-    listItem && '位于列表项中',
-    codeBlock && '位于代码/预格式文本中'
+    t('contextElementTag', block?.tagName?.toLowerCase() || 'unknown'),
+    link && t('contextLinkUrl', link.href),
+    button && t('contextInsideButton'),
+    tableCell && t('contextInsideTableCell'),
+    tableRow && t('contextInsideTableRow'),
+    listItem && t('contextInsideListItem'),
+    codeBlock && t('contextInsideCode')
   ].filter(Boolean).join('\n');
 }
 
@@ -504,8 +506,8 @@ function getTableContext(selection) {
     .join(' | ');
 
   return [
-    headers && `表头：${headers}`,
-    rowText && `当前行：${rowText}`
+    headers && t('contextTableHeaders', headers),
+    rowText && t('contextCurrentRow', rowText)
   ].filter(Boolean).join('\n');
 }
 
@@ -551,21 +553,21 @@ function buildSelectionContext(selection: Selection): SelectionContext {
 
 function formatSelectionContext(context) {
   const contextParts = [
-    formatContextSection('选区结构', [
-      `标题链路：${context.domPath.join(' > ') || '无'}`,
+    formatContextSection(t('contextSelectedStructure'), [
+      t('contextHeadingPath', context.domPath.join(' > ') || t('contextNone')),
       context.selection.structureText,
       context.selection.tableContext
     ].filter(Boolean).join('\n')),
-    formatContextSection('附近正文', [
-      context.localContext.previousText && `前一段：${context.localContext.previousText}`,
-      context.localContext.currentText && `当前语义块：${context.localContext.currentText}`,
-      context.localContext.nextText && `后一段：${context.localContext.nextText}`
+    formatContextSection(t('contextNearbyText'), [
+      context.localContext.previousText && t('contextPreviousParagraph', context.localContext.previousText),
+      context.localContext.currentText && t('contextCurrentBlock', context.localContext.currentText),
+      context.localContext.nextText && t('contextNextParagraph', context.localContext.nextText)
     ].filter(Boolean).join('\n')),
-    formatContextSection('页面正文片段', context.mainContext),
-    formatContextSection('页面信息', [
-      `标题：${context.page.title || '无'}`,
-      `语言：${context.page.language || '未知'}`,
-      context.page.description && `摘要：${context.page.description}`
+    formatContextSection(t('contextPageExcerpt'), context.mainContext),
+    formatContextSection(t('contextPageInfo'), [
+      t('contextPageTitle', context.page.title || t('contextNone')),
+      t('contextPageLanguage', context.page.language || t('contextUnknown')),
+      context.page.description && t('contextPageDescription', context.page.description)
     ].filter(Boolean).join('\n'))
   ].filter(Boolean);
 
@@ -585,7 +587,7 @@ function buildFallbackSelectionContext(selection: Selection, selectedText: strin
     },
     selection: {
       blockTag: block?.tagName?.toLowerCase() || 'unknown',
-      structureText: `所在标签：${block?.tagName?.toLowerCase() || 'unknown'}`,
+      structureText: t('contextElementTag', block?.tagName?.toLowerCase() || 'unknown'),
       tableContext: ''
     },
     domPath: getHeadingChain(block),
@@ -834,7 +836,7 @@ async function startLookup(id: string, intent: Intent = 'explain') {
   } catch {
     if (popovers.has(id) && popovers.get(id).requestId === requestId) {
       stopWaitingRotation(popovers.get(id));
-      renderPanel(id, { status: 'error', error: '扩展已重载，请刷新页面后重试' });
+      renderPanel(id, { status: 'error', error: getLocalizedError('EXTENSION_RELOADED') });
     }
     return;
   }
@@ -842,7 +844,7 @@ async function startLookup(id: string, intent: Intent = 'explain') {
   if (!popovers.has(id) || popovers.get(id).requestId !== requestId) return;
   if (!response?.ok) {
     stopWaitingRotation(state);
-    renderPanel(id, { status: 'error', error: response?.error || '解释失败' });
+    renderPanel(id, { status: 'error', error: getLocalizedError(response?.errorCode, response?.errorDetails) });
     return;
   }
   stopWaitingRotation(state);
@@ -962,9 +964,9 @@ function handlePanelSelection(id) {
     const currentParagraph = windowAroundSelection(getCleanElementText(block), text, MAX_LOCAL_CONTEXT_CHARS);
     renderButton({
       rect: getSelectionRect(range),
-      pageTitle: 'Ask Chat 上一层回答',
+      pageTitle: t('parentAnswerTitle'),
       pageUrl: location.href,
-      surroundingText: `上一层 Ask Chat 回答：${answerText || '无'}`,
+      surroundingText: t('parentAnswerContext', answerText || t('contextNone')),
       currentParagraph,
       text
     });
@@ -998,6 +1000,7 @@ const CONTENT_PREFERENCE_DEFAULTS = {
   superMode: DEFAULT_OPTIONS.superMode,
   quickMode: DEFAULT_OPTIONS.quickMode,
   themeColor: DEFAULT_OPTIONS.themeColor,
+  uiLanguage: DEFAULT_OPTIONS.uiLanguage,
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   panelWidth: DEFAULT_OPTIONS.panelWidth,
   panelHeight: DEFAULT_OPTIONS.panelHeight,
@@ -1018,6 +1021,7 @@ function normalizeTriggerPlacement(value: unknown): TriggerPlacement {
 }
 
 function applyContentPreferences(stored: Record<string, unknown>) {
+  setUiLanguagePreference(String(stored.uiLanguage || DEFAULT_OPTIONS.uiLanguage) as typeof DEFAULT_OPTIONS.uiLanguage);
   const wasEnabled = extensionEnabled;
   extensionEnabled = stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled);
   colorMode = stored.colorMode === 'dark' ? 'dark' : DEFAULT_OPTIONS.colorMode;
@@ -1059,7 +1063,7 @@ chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreference
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') return;
-  const relevantKeys = ['enabled', 'colorMode', 'superMode', 'quickMode', 'themeColor', 'triggerPlacement', 'panelWidth', 'panelHeight', 'translateShortcut', 'askShortcut'];
+  const relevantKeys = ['enabled', 'colorMode', 'superMode', 'quickMode', 'themeColor', 'uiLanguage', 'triggerPlacement', 'panelWidth', 'panelHeight', 'translateShortcut', 'askShortcut'];
   if (!relevantKeys.some(key => changes[key])) return;
   chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
 });

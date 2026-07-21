@@ -118,8 +118,8 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
 .preference-list { display: grid; gap: 2px; margin-top: 8px; }
 .preference-row, .theme-picker { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 46px; }
 .preference-row label, .theme-picker > div:first-child { min-width: 0; cursor: pointer; }
-.preference-row strong, .theme-picker strong { display: block; color: var(--ink); font-size: var(--font-sm); font-weight: 650; }
-.preference-row small, .theme-picker small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--font-xs); font-weight: 400; }
+.preference-row strong, .theme-picker strong { display: block; overflow-wrap: anywhere; color: var(--ink); font-size: var(--font-sm); font-weight: 650; }
+.preference-row small, .theme-picker small { display: block; margin-top: 2px; overflow-wrap: anywhere; color: var(--muted); font-size: var(--font-xs); font-weight: 400; }
 .switch {
   position: relative;
   width: 42px;

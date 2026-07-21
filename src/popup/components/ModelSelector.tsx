@@ -1,5 +1,6 @@
 import { Bot, ChevronDown } from 'lucide-react';
 import type { ApiConnection } from '../../shared/options';
+import { t } from '../../shared/i18n';
 
 interface ModelSelectorProps {
   connections: ApiConnection[];
@@ -21,9 +22,9 @@ export function ModelSelector({ connections, activeConnectionId, disabled, onCha
     <section className="model-panel" aria-labelledby="model-title">
       <div className="section-title">
         <div>
-          <h2 id="model-title">当前模型</h2>
+          <h2 id="model-title">{t('currentModel')}</h2>
         </div>
-        <span>{modelCount} 个可选</span>
+        <span>{t('modelsAvailable', String(modelCount))}</span>
       </div>
 
       <label className="model-select" htmlFor="active-model">

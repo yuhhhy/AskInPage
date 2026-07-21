@@ -3,6 +3,8 @@ import {
   DEFAULT_TRANSLATE_SHORTCUT,
   normalizeKeyboardShortcut
 } from './shortcuts';
+import { t } from './i18n';
+import type { UiLanguagePreference } from './i18n';
 
 export interface ApiConnection {
   id: string;
@@ -16,6 +18,7 @@ export interface ApiConnection {
 export type TriggerPlacement = 'top-left' | 'bottom-left' | 'top-right' | 'bottom-right';
 export type ColorMode = 'light' | 'dark';
 export type ThemeColor = 'purple' | 'blue' | 'green' | 'orange' | 'rose';
+export type TranslationTarget = 'ui' | 'en' | 'zh-CN';
 
 export interface ExtensionOptions {
   enabled: boolean;
@@ -28,6 +31,8 @@ export interface ExtensionOptions {
   temperature: number;
   enableAnswerFormatInstruction: boolean;
   answerFormatInstruction: string;
+  uiLanguage: UiLanguagePreference;
+  translationTarget: TranslationTarget;
   triggerPlacement: TriggerPlacement;
   panelWidth: number;
   panelHeight: number;
@@ -55,6 +60,8 @@ export const DEFAULT_OPTIONS: ExtensionOptions = Object.freeze({
   temperature: 0.2,
   enableAnswerFormatInstruction: true,
   answerFormatInstruction: '',
+  uiLanguage: 'auto',
+  translationTarget: 'ui',
   triggerPlacement: 'bottom-right',
   panelWidth: 360,
   panelHeight: 360,
@@ -73,6 +80,8 @@ export const STORAGE_DEFAULTS: Record<string, unknown> = {
   temperature: DEFAULT_OPTIONS.temperature,
   enableAnswerFormatInstruction: DEFAULT_OPTIONS.enableAnswerFormatInstruction,
   answerFormatInstruction: DEFAULT_OPTIONS.answerFormatInstruction,
+  uiLanguage: DEFAULT_OPTIONS.uiLanguage,
+  translationTarget: DEFAULT_OPTIONS.translationTarget,
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   panelWidth: DEFAULT_OPTIONS.panelWidth,
   panelHeight: DEFAULT_OPTIONS.panelHeight,
@@ -98,7 +107,7 @@ function normalizeConnection(value: unknown, index: number): ApiConnection | nul
   const model = String(source.model || '').trim() || DEFAULT_CONNECTION.model;
   return {
     id: String(source.id || `connection-${index + 1}`).trim() || `connection-${index + 1}`,
-    name: String(source.name || `服务 ${index + 1}`).trim() || `服务 ${index + 1}`,
+    name: String(source.name || t('defaultServiceName', String(index + 1))).trim() || t('defaultServiceName', String(index + 1)),
     apiBaseUrl: String(source.apiBaseUrl || '').trim(),
     apiKey: String(source.apiKey || '').trim(),
     model,
@@ -131,6 +140,8 @@ export function normalizeExtensionOptions(stored: Record<string, unknown>): Exte
   const panelHeight = Number(stored.panelHeight);
   const colorMode = String(stored.colorMode || '');
   const themeColor = String(stored.themeColor || '');
+  const translationTarget = String(stored.translationTarget || '');
+  const uiLanguage = String(stored.uiLanguage || '');
   return {
     enabled: stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled),
     colorMode: colorMode === 'dark' ? 'dark' : DEFAULT_OPTIONS.colorMode,
@@ -146,6 +157,12 @@ export function normalizeExtensionOptions(stored: Record<string, unknown>): Exte
       ? DEFAULT_OPTIONS.enableAnswerFormatInstruction
       : Boolean(stored.enableAnswerFormatInstruction),
     answerFormatInstruction: String(stored.answerFormatInstruction || '').trim(),
+    uiLanguage: ['auto', 'en', 'zh-CN'].includes(uiLanguage)
+      ? uiLanguage as UiLanguagePreference
+      : DEFAULT_OPTIONS.uiLanguage,
+    translationTarget: ['ui', 'en', 'zh-CN'].includes(translationTarget)
+      ? translationTarget as TranslationTarget
+      : DEFAULT_OPTIONS.translationTarget,
     triggerPlacement: ['top-left', 'bottom-left', 'top-right', 'bottom-right'].includes(triggerPlacement)
       ? triggerPlacement as TriggerPlacement
       : DEFAULT_OPTIONS.triggerPlacement,
