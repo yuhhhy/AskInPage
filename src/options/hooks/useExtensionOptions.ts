@@ -28,6 +28,21 @@ export function useExtensionOptions() {
     chrome.storage.sync.get(STORAGE_DEFAULTS).then((stored) => {
       setOptions(normalizeExtensionOptions(stored));
     });
+
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string
+    ) => {
+      if (areaName !== 'sync' || !changes.colorMode) return;
+
+      setOptions((current) => ({
+        ...current,
+        colorMode: changes.colorMode.newValue === 'dark' ? 'dark' : 'light'
+      }));
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
   }, []);
 
   function updateOption<Key extends keyof ExtensionOptions>(key: Key, value: ExtensionOptions[Key]) {
@@ -84,6 +99,43 @@ export function useExtensionOptions() {
     window.setTimeout(() => setStatus(''), 1600);
   }
 
+  function exportOptions() {
+    const payload = {
+      format: 'askinpage-settings',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      settings: options
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `askinpage-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setStatus('配置已导出');
+    window.setTimeout(() => setStatus(''), 1600);
+  }
+
+  async function importOptions(file: File) {
+    try {
+      const parsed = JSON.parse(await file.text()) as Record<string, unknown>;
+      const source = parsed?.format === 'askinpage-settings' && parsed.settings && typeof parsed.settings === 'object'
+        ? parsed.settings as Record<string, unknown>
+        : parsed;
+      if (!source || typeof source !== 'object' || (!Array.isArray(source.connections) && !('apiBaseUrl' in source))) {
+        throw new Error('invalid settings file');
+      }
+      const imported = normalizeExtensionOptions(source);
+      await chrome.storage.sync.set(imported);
+      setOptions(imported);
+      setStatus('配置已导入并生效');
+    } catch {
+      setStatus('导入失败：请选择有效的 AskInPage JSON 配置');
+    }
+    window.setTimeout(() => setStatus(''), 2600);
+  }
+
   return {
     options,
     status,
@@ -92,6 +144,8 @@ export function useExtensionOptions() {
     updateConnection,
     addConnection,
     removeConnection,
-    saveOptions
+    saveOptions,
+    exportOptions,
+    importOptions
   };
 }

@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { AnswerPreferenceFields } from '../components/AnswerPreferenceFields';
+import { DataManagementFields } from '../components/DataManagementFields';
 import { ModelConnectionFields } from '../components/ModelConnectionFields';
 import { PanelPreferenceFields } from '../components/PanelPreferenceFields';
 import { SettingsHeader } from '../components/SettingsHeader';
@@ -7,7 +8,7 @@ import { SettingsSection } from '../components/SettingsSection';
 import { useExtensionOptions } from '../hooks/useExtensionOptions';
 
 export function OptionsPage() {
-  const { options, status, updateOption, selectConnection, updateConnection, addConnection, removeConnection, saveOptions } = useExtensionOptions();
+  const { options, status, updateOption, selectConnection, updateConnection, addConnection, removeConnection, saveOptions, exportOptions, importOptions } = useExtensionOptions();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -15,7 +16,7 @@ export function OptionsPage() {
   }
 
   return (
-    <main className="settings-shell">
+    <main className="settings-shell" data-mode={options.colorMode} data-theme={options.themeColor}>
       <SettingsHeader />
       <form onSubmit={handleSubmit}>
         <SettingsSection index="01" title="模型服务" titleId="connection-title">
@@ -35,6 +36,10 @@ export function OptionsPage() {
 
         <SettingsSection index="03" title="弹窗布局" titleId="panel-title">
           <PanelPreferenceFields options={options} onChange={updateOption} />
+        </SettingsSection>
+
+        <SettingsSection index="04" title="数据管理" titleId="data-title">
+          <DataManagementFields onExport={exportOptions} onImport={importOptions} />
         </SettingsSection>
 
         <button className="save-button" type="submit">保存设置</button>

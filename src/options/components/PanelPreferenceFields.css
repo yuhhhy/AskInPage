@@ -42,7 +42,7 @@
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #fff;
+  background: var(--surface);
   color: var(--muted);
   cursor: pointer;
   font: inherit;
@@ -51,12 +51,12 @@
   transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 }
 
-.placement-option:hover { border-color: #b9a8d8; color: var(--text); }
-.placement-option.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.placement-option:hover { border-color: var(--accent); color: var(--ink); }
+.placement-option.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
 .placement-option:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
 
 .dimension-preferences { display: grid; gap: 30px; padding-top: 2px; }
-.dimension-intro { color: var(--text); font-size: var(--font-sm); font-weight: 700; }
+.dimension-intro { color: var(--ink); font-size: var(--font-sm); font-weight: 700; }
 .dimension-control { padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .dimension-control:last-child { border-bottom: 0; }
 .dimension-number { display: flex; align-items: center; gap: 6px; color: var(--muted); }
@@ -64,7 +64,7 @@
 .dimension-number span { font-size: var(--font-xs); }
 .dimension-range { height: 22px; margin-top: 17px; padding: 0; border: 0; box-shadow: none; accent-color: var(--accent); }
 .dimension-range:focus { border: 0; box-shadow: none; }
-.dimension-scale { display: flex; justify-content: space-between; color: #a39da7; font-size: 10px; }
+.dimension-scale { display: flex; justify-content: space-between; color: var(--faint); font-size: 10px; }
 
 @media (max-width: 760px) {
   .panel-preferences { grid-template-columns: 1fr; gap: 30px; }

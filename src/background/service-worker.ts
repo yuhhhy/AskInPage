@@ -3,6 +3,19 @@ import { DEFAULT_CONNECTION, DEFAULT_OPTIONS, STORAGE_DEFAULTS, getActiveConnect
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
 const REQUEST_IDLE_TIMEOUT_MS = 45000;
 const activeRequests = new Map();
+const POPUP_PREFERENCE_KEYS = new Set(['enabled', 'colorMode', 'superMode', 'themeColor']);
+
+async function saveAndBroadcastPreference(key, value) {
+  if (!POPUP_PREFERENCE_KEYS.has(key)) throw new Error('不支持的设置项');
+  await chrome.storage.sync.set({ [key]: value });
+  const tabs = await chrome.tabs.query({});
+  await Promise.allSettled(tabs
+    .filter((tab) => typeof tab.id === 'number')
+    .map((tab) => chrome.tabs.sendMessage(tab.id, {
+      type: 'ASK_CHAT_PREFERENCES_CHANGED',
+      preference: { key, value }
+    })));
+}
 
 function normalizeBaseUrl(url) {
   const trimmed = String(url || '').trim().replace(/\/+$/, '');
@@ -215,6 +228,13 @@ async function explainSelection(payload, sender) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === 'ASK_CHAT_SET_PREFERENCE') {
+    saveAndBroadcastPreference(message.key, message.value)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => sendResponse({ ok: false, error: error.message || '设置保存失败' }));
+    return true;
+  }
+
   if (message?.type === 'ASK_CHAT_CANCEL') {
     const activeRequest = activeRequests.get(message.requestId);
     activeRequest?.clearTimers?.();

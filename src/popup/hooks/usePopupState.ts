@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { DEFAULT_OPTIONS, STORAGE_DEFAULTS, getActiveConnection, normalizeExtensionOptions, type ApiConnection } from '../../shared/options';
+import { DEFAULT_OPTIONS, STORAGE_DEFAULTS, getActiveConnection, normalizeExtensionOptions, type ApiConnection, type ColorMode, type ThemeColor } from '../../shared/options';
 
 interface PopupState {
   enabled: boolean;
+  colorMode: ColorMode;
+  superMode: boolean;
+  themeColor: ThemeColor;
   supported: boolean | null;
   connections: ApiConnection[];
   activeConnectionId: string;
@@ -30,8 +33,12 @@ async function isSupportedTab(tab?: chrome.tabs.Tab): Promise<boolean> {
 }
 
 export function usePopupState() {
+  const [motionReady, setMotionReady] = useState(false);
   const [state, setState] = useState<PopupState>({
     enabled: DEFAULT_OPTIONS.enabled,
+    colorMode: DEFAULT_OPTIONS.colorMode,
+    superMode: DEFAULT_OPTIONS.superMode,
+    themeColor: DEFAULT_OPTIONS.themeColor,
     supported: null,
     connections: DEFAULT_OPTIONS.connections,
     activeConnectionId: DEFAULT_OPTIONS.activeConnectionId,
@@ -40,6 +47,8 @@ export function usePopupState() {
 
   useEffect(() => {
     let active = true;
+    let firstFrame: number | null = null;
+    let secondFrame: number | null = null;
 
     async function loadState(includeSupport = false) {
       const stored = await chrome.storage.sync.get(STORAGE_DEFAULTS);
@@ -51,10 +60,22 @@ export function usePopupState() {
       setState((current) => ({
         ...current,
         enabled: options.enabled,
+        colorMode: options.colorMode,
+        superMode: options.superMode,
+        themeColor: options.themeColor,
         connections: options.connections,
         activeConnectionId: options.activeConnectionId,
         supported: supported ?? current.supported
       }));
+      if (includeSupport) {
+        // Storage hydration must settle before transitions are enabled. Two
+        // frames guarantee React has painted the persisted switch positions.
+        firstFrame = window.requestAnimationFrame(() => {
+          secondFrame = window.requestAnimationFrame(() => {
+            if (active) setMotionReady(true);
+          });
+        });
+      }
     }
 
     loadState(true);
@@ -65,14 +86,21 @@ export function usePopupState() {
 
     return () => {
       active = false;
+      if (firstFrame !== null) window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
   }, []);
 
-  async function toggleEnabled() {
-    const enabled = !state.enabled;
-    setState((current) => ({ ...current, enabled }));
-    await chrome.storage.sync.set({ enabled });
+  async function updatePreference(key: 'enabled' | 'colorMode' | 'superMode' | 'themeColor', value: boolean | ColorMode | ThemeColor) {
+    setState((current) => ({ ...current, [key]: value }));
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'ASK_CHAT_SET_PREFERENCE', key, value });
+      if (!response?.ok) throw new Error(response?.error || '设置保存失败');
+    } catch {
+      // Keep a direct-storage fallback for browsers that are waking a newly updated service worker.
+      await chrome.storage.sync.set({ [key]: value });
+    }
   }
 
   async function selectModel(connectionId: string, model: string) {
@@ -82,5 +110,5 @@ export function usePopupState() {
   }
 
   const activeConnection = getActiveConnection({ ...DEFAULT_OPTIONS, connections: state.connections, activeConnectionId: state.activeConnectionId });
-  return { ...state, activeConnection, toggleEnabled, selectModel };
+  return { ...state, motionReady, activeConnection, updatePreference, selectModel };
 }

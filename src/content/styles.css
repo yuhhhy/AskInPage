@@ -4,6 +4,32 @@
   z-index: 2147483647;
   font-family: "Avenir Next", "Noto Sans SC", system-ui, sans-serif;
   font-size: 14px;
+  --ask-accent: #5817c7;
+  --ask-accent-soft: #f2edfc;
+}
+
+#ask-chat-selection-root[data-theme="blue"] { --ask-accent: #1268a8; --ask-accent-soft: #e8f3fb; }
+#ask-chat-selection-root[data-theme="green"] { --ask-accent: #14735a; --ask-accent-soft: #e8f5f0; }
+#ask-chat-selection-root[data-theme="orange"] { --ask-accent: #b55312; --ask-accent-soft: #fff1e6; }
+#ask-chat-selection-root[data-theme="rose"] { --ask-accent: #a73559; --ask-accent-soft: #fbeaf0; }
+
+html.ask-chat-super-mode button,
+html.ask-chat-super-mode a[href],
+html.ask-chat-super-mode [role="button"],
+html.ask-chat-super-mode [role="link"] {
+  cursor: text !important;
+  -webkit-user-drag: none !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+html.ask-chat-super-mode #ask-chat-selection-root button,
+html.ask-chat-super-mode #ask-chat-selection-root a[href],
+html.ask-chat-super-mode #ask-chat-selection-root [role="button"],
+html.ask-chat-super-mode #ask-chat-selection-root [role="link"] {
+  cursor: pointer !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 #ask-chat-selection-root * {
@@ -91,9 +117,9 @@
 .ask-chat-trigger button {
   height: 30px;
   padding: 0 12px;
-  border: 1px solid #7656d8;
+  border: 1px solid var(--ask-accent);
   border-radius: 6px;
-  background: #7656d8;
+  background: var(--ask-accent);
   color: #fff;
   cursor: pointer;
   font-family: inherit;
@@ -103,7 +129,7 @@
   line-height: 1;
 }
 
-.ask-chat-trigger button:hover { background: #6544c5; }
+.ask-chat-trigger button:hover { filter: brightness(0.9); }
 
 .ask-chat-panel {
   max-width: calc(100vw - 16px);
@@ -145,7 +171,7 @@
 
 .ask-chat-panel.pinned .ask-chat-pin {
   transform: rotate(-42deg);
-  color: #5817c7;
+  color: var(--ask-accent);
 }
 
 .ask-chat-header > span {
@@ -267,7 +293,7 @@
   width: 13px;
   height: 13px;
   margin: 0 5px 0 0;
-  accent-color: #5817c7;
+  accent-color: var(--ask-accent);
 }
 
 .ask-chat-body p:first-child,
@@ -346,7 +372,7 @@
 }
 
 .ask-chat-body a {
-  color: #5817c7;
+  color: var(--ask-accent);
   text-decoration: none;
 }
 
@@ -397,7 +423,7 @@
   height: 16px;
   flex: 0 0 auto;
   border: 2px solid rgba(47, 111, 223, 0.2);
-  border-top-color: #5817c7;
+  border-top-color: var(--ask-accent);
   border-radius: 50%;
   animation: ask-chat-spin 1.1s linear infinite;
 }
@@ -436,3 +462,38 @@
 .ask-chat-error {
   color: #d84848;
 }
+
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-panel {
+  border-color: #423e49;
+  background: rgba(31, 29, 34, 0.985);
+  box-shadow: 0 20px 64px rgba(0, 0, 0, 0.48);
+  color: #f3f0f5;
+}
+
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-header { border-bottom-color: #423e49; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-header button { color: #aaa4b0; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-header button:hover { background: #353139; color: #fff; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-user-prompt,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-meta,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-muted { color: #aaa4b0; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body { color: #d8d3dc; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body h1,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body h2,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body h3,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body h4,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body h5,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body h6,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body strong { color: #f3f0f5; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body code { background: #343139; color: #f0edf2; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body pre { border-color: #49444f; background: #28252b; color: #f0edf2; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body hr { background: #49444f; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body blockquote { border-left-color: #5a5461; color: #bbb5c0; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body th,
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body td { border-color: #49444f; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-body th { background: #302d34; color: #f3f0f5; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-waiting-text {
+  background-image: linear-gradient(110deg, #918a98 0%, #918a98 34%, #eeeaf0 48%, #918a98 62%, #918a98 100%);
+}
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-action-menu { border-color: #423e49; background: rgba(31, 29, 34, 0.985); box-shadow: 0 14px 34px rgba(0, 0, 0, .4); }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-action-menu button { color: #eeeaf0; }
+#ask-chat-selection-root[data-mode="dark"] .ask-chat-action-menu button:hover { background: #353139; }

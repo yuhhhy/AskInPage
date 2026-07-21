@@ -8,9 +8,14 @@ export interface ApiConnection {
 }
 
 export type TriggerPlacement = 'top-left' | 'bottom-left' | 'top-right' | 'bottom-right';
+export type ColorMode = 'light' | 'dark';
+export type ThemeColor = 'purple' | 'blue' | 'green' | 'orange' | 'rose';
 
 export interface ExtensionOptions {
   enabled: boolean;
+  colorMode: ColorMode;
+  superMode: boolean;
+  themeColor: ThemeColor;
   connections: ApiConnection[];
   activeConnectionId: string;
   temperature: number;
@@ -32,6 +37,9 @@ export const DEFAULT_CONNECTION: ApiConnection = Object.freeze({
 
 export const DEFAULT_OPTIONS: ExtensionOptions = Object.freeze({
   enabled: true,
+  colorMode: 'light',
+  superMode: false,
+  themeColor: 'purple',
   connections: [DEFAULT_CONNECTION],
   activeConnectionId: DEFAULT_CONNECTION.id,
   temperature: 0.2,
@@ -44,6 +52,9 @@ export const DEFAULT_OPTIONS: ExtensionOptions = Object.freeze({
 
 export const STORAGE_DEFAULTS: Record<string, unknown> = {
   enabled: DEFAULT_OPTIONS.enabled,
+  colorMode: DEFAULT_OPTIONS.colorMode,
+  superMode: DEFAULT_OPTIONS.superMode,
+  themeColor: DEFAULT_OPTIONS.themeColor,
   connections: null,
   activeConnectionId: '',
   temperature: DEFAULT_OPTIONS.temperature,
@@ -104,8 +115,15 @@ export function normalizeExtensionOptions(stored: Record<string, unknown>): Exte
   const triggerPlacement = String(stored.triggerPlacement || '');
   const panelWidth = Number(stored.panelWidth);
   const panelHeight = Number(stored.panelHeight);
+  const colorMode = String(stored.colorMode || '');
+  const themeColor = String(stored.themeColor || '');
   return {
     enabled: stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled),
+    colorMode: colorMode === 'dark' ? 'dark' : DEFAULT_OPTIONS.colorMode,
+    superMode: stored.superMode === undefined ? DEFAULT_OPTIONS.superMode : Boolean(stored.superMode),
+    themeColor: ['purple', 'blue', 'green', 'orange', 'rose'].includes(themeColor)
+      ? themeColor as ThemeColor
+      : DEFAULT_OPTIONS.themeColor,
     connections,
     activeConnectionId,
     temperature: Number.isFinite(temperature) ? Math.min(2, Math.max(0, temperature)) : DEFAULT_OPTIONS.temperature,

@@ -1,6 +1,6 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { DEFAULT_OPTIONS } from '../shared/options';
-import type { TriggerPlacement } from '../shared/options';
+import type { ColorMode, ThemeColor, TriggerPlacement } from '../shared/options';
 import { AskChatApp, type AskChatActions } from './components/AskChatApp';
 import { THINKING_STATUS_INTERVAL_MS, THINKING_STATUS_MESSAGES } from './constants';
 import type { Intent, PanelSize, PanelStatus, PopoverState, Position, SelectionContext, SelectionTarget, ViewportRect } from './types';
@@ -32,6 +32,9 @@ let reactRoot: Root | null = null;
 let nextPopoverId = 1;
 let suppressNextKeyupSelection = false;
 let extensionEnabled = DEFAULT_OPTIONS.enabled;
+let colorMode: ColorMode = DEFAULT_OPTIONS.colorMode;
+let superMode = DEFAULT_OPTIONS.superMode;
+let themeColor: ThemeColor = DEFAULT_OPTIONS.themeColor;
 let layoutPreferences = {
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   width: DEFAULT_OPTIONS.panelWidth,
@@ -39,12 +42,19 @@ let layoutPreferences = {
 };
 const popovers = new Map<string, PopoverState>();
 const observedShadowRoots = new Set<ShadowRoot>();
-const shadowObservers = new Map<ShadowRoot, MutationObserver>();
 let lastPointerGesture: PointerGesture | null = null;
 let nextPointerGestureId = 1;
 let lastProcessedGestureId = 0;
 let pendingSelectionTimer: number | null = null;
 let pendingSelectionRequest: SelectionRequest | null = null;
+let activeSuperModeSelection: {
+  pointerId: number;
+  button: Element;
+  startX: number;
+  startY: number;
+  moved: boolean;
+  selectionScheduled: boolean;
+} | null = null;
 
 interface PointerGesture {
   id: number;
@@ -69,11 +79,25 @@ interface ActiveSelection {
 }
 
 function ensureRoot(): HTMLDivElement {
-  if (root) return root;
+  if (root) {
+    applyRootAppearance(root);
+    return root;
+  }
   root = document.createElement('div');
   root.id = ASK_CHAT_ROOT_ID;
+  applyRootAppearance(root);
   document.documentElement.appendChild(root);
   return root;
+}
+
+function applyRootAppearance(target: HTMLDivElement) {
+  target.dataset.mode = colorMode;
+  target.dataset.theme = themeColor;
+}
+
+function syncSuperMode() {
+  document.documentElement.classList.toggle('ask-chat-super-mode', extensionEnabled && superMode);
+  if (!extensionEnabled || !superMode) activeSuperModeSelection = null;
 }
 
 function isInsideAskChat(node) {
@@ -877,6 +901,9 @@ function eventIsInsideAskChat(event: Event): boolean {
 
 function handleSelectionPointerUp(event: PointerEvent | MouseEvent) {
   const eventPath = getEventPath(event);
+  eventPath.forEach(item => {
+    if (item instanceof ShadowRoot) observedShadowRoots.add(item);
+  });
   if (eventIsInsideAskChat(event) || lastPointerGesture?.startedInsideAskChat) return;
 
   const gesture = lastPointerGesture
@@ -888,46 +915,6 @@ function handleSelectionPointerUp(event: PointerEvent | MouseEvent) {
     gesture,
     retry: true
   });
-}
-
-function observeAddedShadowHosts(node: Node) {
-  if (!(node instanceof Element)) return;
-  registerShadowRoot(node.shadowRoot);
-  node.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
-
-  // Web components often attach their shadow root shortly after being inserted.
-  for (const delay of [50, 250, 1000, 2500]) {
-    window.setTimeout(() => {
-      registerShadowRoot(node.shadowRoot);
-      node.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
-    }, delay);
-  }
-}
-
-function registerShadowRoot(shadowRoot: ShadowRoot | null) {
-  if (!shadowRoot || observedShadowRoots.has(shadowRoot)) return;
-  observedShadowRoots.add(shadowRoot);
-  shadowRoot.addEventListener('pointerup', handleSelectionPointerUp, true);
-  shadowRoot.addEventListener('mouseup', handleSelectionPointerUp, true);
-  shadowRoot.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
-
-  const observer = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
-      mutation.addedNodes.forEach(observeAddedShadowHosts);
-    }
-  });
-  observer.observe(shadowRoot, { childList: true, subtree: true });
-  shadowObservers.set(shadowRoot, observer);
-}
-
-function startShadowRootDiscovery() {
-  document.querySelectorAll('*').forEach(element => registerShadowRoot(element.shadowRoot));
-  const observer = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
-      mutation.addedNodes.forEach(observeAddedShadowHosts);
-    }
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 function handlePanelSelection(id) {
@@ -959,6 +946,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ ok: true, enabled: extensionEnabled });
     return false;
   }
+  if (message?.type === 'ASK_CHAT_PREFERENCES_CHANGED') {
+    chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
+    sendResponse({ ok: true });
+    return false;
+  }
   if (message?.type !== 'ASK_CHAT_DELTA') return false;
 
   const state = Array.from(popovers.values()).find(item => item.requestId === message.requestId);
@@ -972,6 +964,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 const CONTENT_PREFERENCE_DEFAULTS = {
   enabled: DEFAULT_OPTIONS.enabled,
+  colorMode: DEFAULT_OPTIONS.colorMode,
+  superMode: DEFAULT_OPTIONS.superMode,
+  themeColor: DEFAULT_OPTIONS.themeColor,
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   panelWidth: DEFAULT_OPTIONS.panelWidth,
   panelHeight: DEFAULT_OPTIONS.panelHeight
@@ -992,19 +987,25 @@ function normalizeTriggerPlacement(value: unknown): TriggerPlacement {
 function applyContentPreferences(stored: Record<string, unknown>) {
   const wasEnabled = extensionEnabled;
   extensionEnabled = stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled);
+  colorMode = stored.colorMode === 'dark' ? 'dark' : DEFAULT_OPTIONS.colorMode;
+  superMode = stored.superMode === undefined ? DEFAULT_OPTIONS.superMode : Boolean(stored.superMode);
+  themeColor = ['purple', 'blue', 'green', 'orange', 'rose'].includes(String(stored.themeColor || ''))
+    ? stored.themeColor as ThemeColor
+    : DEFAULT_OPTIONS.themeColor;
+  syncSuperMode();
+  if (root) applyRootAppearance(root);
   const nextLayoutPreferences = {
     triggerPlacement: normalizeTriggerPlacement(stored.triggerPlacement),
     width: Math.round(clampStoredNumber(stored.panelWidth, DEFAULT_OPTIONS.panelWidth, 300, 720)),
     height: Math.round(clampStoredNumber(stored.panelHeight, DEFAULT_OPTIONS.panelHeight, 220, 720))
   };
-  const triggerPositionChanged = nextLayoutPreferences.triggerPlacement !== layoutPreferences.triggerPlacement;
   const panelSizeChanged = nextLayoutPreferences.width !== layoutPreferences.width
     || nextLayoutPreferences.height !== layoutPreferences.height;
   layoutPreferences = nextLayoutPreferences;
 
   if (!extensionEnabled) {
     clearUi();
-  } else if ((triggerPositionChanged || panelSizeChanged) && popovers.size) {
+  } else if (popovers.size) {
     if (panelSizeChanged) {
       for (const state of popovers.values()) {
         if (state.mode === 'panel') state.panelPosition = null;
@@ -1020,12 +1021,161 @@ chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreference
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') return;
-  const relevantKeys = ['enabled', 'triggerPlacement', 'panelWidth', 'panelHeight'];
+  const relevantKeys = ['enabled', 'colorMode', 'superMode', 'themeColor', 'triggerPlacement', 'panelWidth', 'panelHeight'];
   if (!relevantKeys.some(key => changes[key])) return;
   chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
 });
 
-startShadowRootDiscovery();
+function getSuperModeButton(event: Event): Element | null {
+  if (!extensionEnabled || !superMode || !event.isTrusted || eventIsInsideAskChat(event)) return null;
+  const button = getEventPath(event).find((item): item is Element => item instanceof Element && item.matches([
+    'button',
+    'a[href]',
+    '[role="button"]',
+    '[role="link"]',
+    'input[type="button"]',
+    'input[type="submit"]',
+    'input[type="reset"]'
+  ].join(', '))) || null;
+  if (!button) return null;
+  const rect = button.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0 ? button : null;
+}
+
+function selectSuperModeButtonText(button: Element): string {
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(button);
+    const selection = getRootSelection(button.getRootNode()) || window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    return normalizeText(selection?.toString() || getElementText(button));
+  } catch {
+    // The button may have rerendered during the pointer gesture.
+    return getElementText(button);
+  }
+}
+
+function scheduleSuperModeSelection(button: Element) {
+  window.setTimeout(() => {
+    const selection = getRootSelection(button.getRootNode()) || window.getSelection();
+    const selectedText = normalizeText(selection?.toString() || '') || selectSuperModeButtonText(button);
+    if (!selectedText) return;
+    schedulePageSelection({ eventTarget: button, eventPath: [button], gesture: null, retry: true }, 0);
+  }, 0);
+}
+
+document.documentElement.addEventListener('pointerdown', (event) => {
+  const button = getSuperModeButton(event);
+  if (!button) return;
+  activeSuperModeSelection = {
+    pointerId: event.pointerId,
+    button,
+    startX: event.clientX,
+    startY: event.clientY,
+    moved: false,
+    selectionScheduled: false
+  };
+  // Keep the browser's default pointer behavior so button text can be selected.
+  // Stopping propagation is enough to keep page frameworks from handling the
+  // press; the final click is cancelled separately below.
+  event.stopImmediatePropagation();
+}, true);
+
+document.documentElement.addEventListener('pointermove', (event) => {
+  const active = activeSuperModeSelection;
+  if (!active || active.pointerId !== event.pointerId) return;
+  if (!active.moved && Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3) {
+    active.moved = true;
+  }
+  if (active.moved && !active.selectionScheduled) {
+    active.selectionScheduled = true;
+    scheduleSuperModeSelection(active.button);
+  }
+  event.stopImmediatePropagation();
+}, true);
+
+document.documentElement.addEventListener('pointerup', (event) => {
+  const active = activeSuperModeSelection;
+  if (!active || active.pointerId !== event.pointerId) return;
+  active.moved ||= Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3;
+  activeSuperModeSelection = null;
+  event.stopImmediatePropagation();
+  if (!active.moved || active.selectionScheduled) return;
+
+  // Selection is finalized after pointerup. Let the native selection win; use
+  // the whole target as a fallback for sites whose styles suppress selection.
+  scheduleSuperModeSelection(active.button);
+}, true);
+
+document.documentElement.addEventListener('pointercancel', (event) => {
+  if (activeSuperModeSelection?.pointerId === event.pointerId) activeSuperModeSelection = null;
+}, true);
+
+document.documentElement.addEventListener('mousedown', (event) => {
+  const button = getSuperModeButton(event);
+  if (!button) return;
+  // Some browsers and automation/accessibility paths emit only mouse events.
+  // Keep a mouse-only fallback without replacing an active PointerEvent gesture.
+  activeSuperModeSelection ||= {
+    pointerId: -1,
+    button,
+    startX: event.clientX,
+    startY: event.clientY,
+    moved: false,
+    selectionScheduled: false
+  };
+  event.stopImmediatePropagation();
+}, true);
+
+document.documentElement.addEventListener('mousemove', (event) => {
+  const active = activeSuperModeSelection;
+  if (!active || active.pointerId !== -1) return;
+  if (!active.moved && Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3) {
+    active.moved = true;
+  }
+  if (active.moved && !active.selectionScheduled) {
+    active.selectionScheduled = true;
+    scheduleSuperModeSelection(active.button);
+  }
+  event.stopImmediatePropagation();
+}, true);
+
+document.documentElement.addEventListener('mouseup', (event) => {
+  const active = activeSuperModeSelection;
+  if (!active || active.pointerId !== -1) return;
+  active.moved ||= Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3;
+  activeSuperModeSelection = null;
+  event.stopImmediatePropagation();
+  if (active.moved && !active.selectionScheduled) scheduleSuperModeSelection(active.button);
+}, true);
+
+document.documentElement.addEventListener('dblclick', (event) => {
+  const button = getSuperModeButton(event);
+  if (!button) return;
+  event.stopImmediatePropagation();
+  scheduleSuperModeSelection(button);
+}, true);
+
+document.documentElement.addEventListener('dragstart', (event) => {
+  const button = getSuperModeButton(event);
+  if (!button) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  scheduleSuperModeSelection(button);
+}, true);
+
+document.documentElement.addEventListener('click', (event) => {
+  if (!getSuperModeButton(event)) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}, true);
+
+document.documentElement.addEventListener('keydown', (event) => {
+  if (!getSuperModeButton(event) || (event.key !== 'Enter' && event.key !== ' ')) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}, true);
 
 document.addEventListener('pointerup', handleSelectionPointerUp, true);
 document.addEventListener('mouseup', handleSelectionPointerUp, true);
