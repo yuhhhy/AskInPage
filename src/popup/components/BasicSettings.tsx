@@ -5,10 +5,12 @@ interface BasicSettingsProps {
   enabled: boolean;
   colorMode: ColorMode;
   superMode: boolean;
+  quickMode: boolean;
   themeColor: ThemeColor;
   onEnabledChange: (value: boolean) => void;
   onColorModeChange: (value: ColorMode) => void;
   onSuperModeChange: (value: boolean) => void;
+  onQuickModeChange: (value: boolean) => void;
   onThemeColorChange: (value: ThemeColor) => void;
 }
 
@@ -30,6 +32,7 @@ export function BasicSettings(props: BasicSettingsProps) {
         <ToggleSwitch id="extension-enabled" checked={props.enabled} label="插件开关" description="控制网页划词功能" onChange={props.onEnabledChange} />
         <ToggleSwitch id="dark-mode" checked={props.colorMode === 'dark'} label="夜间阅读" description="回答弹窗使用深色外观" onChange={(checked) => props.onColorModeChange(checked ? 'dark' : 'light')} />
         <ToggleSwitch id="super-mode" checked={props.superMode} label="超级模式" description="禁用网页按钮和链接，允许选择其中的文字" onChange={props.onSuperModeChange} />
+        <ToggleSwitch id="quick-mode" checked={props.quickMode} label="快速模式" description="仅提供当前段落和选中文字，会削弱回答效果和准确性" onChange={props.onQuickModeChange} />
       </div>
       <div className="theme-picker">
         <div>

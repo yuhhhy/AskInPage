@@ -4,7 +4,7 @@ import { buildPromptMessages } from './prompts';
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
 const REQUEST_IDLE_TIMEOUT_MS = 45000;
 const activeRequests = new Map();
-const POPUP_PREFERENCE_KEYS = new Set(['enabled', 'colorMode', 'superMode', 'themeColor']);
+const POPUP_PREFERENCE_KEYS = new Set(['enabled', 'colorMode', 'superMode', 'quickMode', 'themeColor']);
 
 async function saveAndBroadcastPreference(key, value) {
   if (!POPUP_PREFERENCE_KEYS.has(key)) throw new Error('不支持的设置项');
@@ -119,6 +119,7 @@ async function explainSelection(payload, sender) {
         stream: true,
         messages: buildPromptMessages({
           ...payload,
+          quickMode: options.quickMode,
           answerFormatInstruction: options.answerFormatInstruction,
           enableAnswerFormatInstruction: options.enableAnswerFormatInstruction
         })

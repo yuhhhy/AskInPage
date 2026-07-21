@@ -7,7 +7,7 @@ import { usePopupState } from '../hooks/usePopupState';
 const GITHUB_URL = 'https://github.com/yuhhhy/AskInPage';
 
 export function PopupPage() {
-  const { enabled, supported, connections, activeConnectionId, version, colorMode, superMode, themeColor, motionReady, updatePreference, selectModel } = usePopupState();
+  const { enabled, supported, connections, activeConnectionId, version, colorMode, superMode, quickMode, themeColor, motionReady, updatePreference, selectModel } = usePopupState();
 
   return (
     <main className={`popup-shell${motionReady ? ' motion-ready' : ''}`} data-mode={colorMode} data-theme={themeColor}>
@@ -26,10 +26,12 @@ export function PopupPage() {
           enabled={enabled}
           colorMode={colorMode}
           superMode={superMode}
+          quickMode={quickMode}
           themeColor={themeColor}
           onEnabledChange={(value) => updatePreference('enabled', value)}
           onColorModeChange={(value) => updatePreference('colorMode', value)}
           onSuperModeChange={(value) => updatePreference('superMode', value)}
+          onQuickModeChange={(value) => updatePreference('quickMode', value)}
           onThemeColorChange={(value) => updatePreference('themeColor', value)}
         />
         <ModelSelector connections={connections} activeConnectionId={activeConnectionId} disabled={!enabled} onChange={selectModel} />

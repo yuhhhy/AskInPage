@@ -21,6 +21,7 @@ export interface ExtensionOptions {
   enabled: boolean;
   colorMode: ColorMode;
   superMode: boolean;
+  quickMode: boolean;
   themeColor: ThemeColor;
   connections: ApiConnection[];
   activeConnectionId: string;
@@ -47,6 +48,7 @@ export const DEFAULT_OPTIONS: ExtensionOptions = Object.freeze({
   enabled: true,
   colorMode: 'light',
   superMode: false,
+  quickMode: false,
   themeColor: 'purple',
   connections: [DEFAULT_CONNECTION],
   activeConnectionId: DEFAULT_CONNECTION.id,
@@ -64,6 +66,7 @@ export const STORAGE_DEFAULTS: Record<string, unknown> = {
   enabled: DEFAULT_OPTIONS.enabled,
   colorMode: DEFAULT_OPTIONS.colorMode,
   superMode: DEFAULT_OPTIONS.superMode,
+  quickMode: DEFAULT_OPTIONS.quickMode,
   themeColor: DEFAULT_OPTIONS.themeColor,
   connections: null,
   activeConnectionId: '',
@@ -133,6 +136,7 @@ export function normalizeExtensionOptions(stored: Record<string, unknown>): Exte
     enabled: stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled),
     colorMode: colorMode === 'dark' ? 'dark' : DEFAULT_OPTIONS.colorMode,
     superMode: stored.superMode === undefined ? DEFAULT_OPTIONS.superMode : Boolean(stored.superMode),
+    quickMode: stored.quickMode === undefined ? DEFAULT_OPTIONS.quickMode : Boolean(stored.quickMode),
     themeColor: ['purple', 'blue', 'green', 'orange', 'rose'].includes(themeColor)
       ? themeColor as ThemeColor
       : DEFAULT_OPTIONS.themeColor,

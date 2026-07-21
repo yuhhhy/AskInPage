@@ -35,6 +35,7 @@ const suppressedShortcutKeyups = new Set<string>();
 let extensionEnabled = DEFAULT_OPTIONS.enabled;
 let colorMode: ColorMode = DEFAULT_OPTIONS.colorMode;
 let superMode = DEFAULT_OPTIONS.superMode;
+let quickMode = DEFAULT_OPTIONS.quickMode;
 let themeColor: ThemeColor = DEFAULT_OPTIONS.themeColor;
 let layoutPreferences = {
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
@@ -823,6 +824,7 @@ async function startLookup(id: string, intent: Intent = 'explain') {
         requestId,
         selectedText: state.target.text,
         surroundingText: state.target.surroundingText,
+        currentParagraph: state.target.currentParagraph,
         pageTitle: state.target.pageTitle || document.title,
         pageUrl: state.target.pageUrl || location.href,
         userPrompt: state.userPrompt,
@@ -881,17 +883,20 @@ function handlePageSelection(
     pageTitle: fallbackContext.page.title || document.title,
     pageUrl: fallbackContext.page.url || location.href,
     surroundingText: fallbackContext.formattedText,
+    currentParagraph: fallbackContext.localContext.currentText,
     text
   });
   window.setTimeout(() => {
     const state = popovers.get(id);
     if (!state) return;
+    if (quickMode) return;
     const context = buildSafeSelectionContext(selection, text);
     state.target = {
       ...state.target,
       pageTitle: context.page.title || document.title,
       pageUrl: context.page.url || location.href,
-      surroundingText: context.formattedText
+      surroundingText: context.formattedText,
+      currentParagraph: context.localContext.currentText
     };
   }, 0);
 }
@@ -953,11 +958,14 @@ function handlePanelSelection(id) {
 
     const range = selection.getRangeAt(0);
     const answerText = normalizeText(body.dataset.content || body.innerText || body.textContent);
+    const block = getSemanticBlock(selection.anchorNode) || getBlockElement(selection.anchorNode);
+    const currentParagraph = windowAroundSelection(getCleanElementText(block), text, MAX_LOCAL_CONTEXT_CHARS);
     renderButton({
       rect: getSelectionRect(range),
       pageTitle: 'Ask Chat 上一层回答',
       pageUrl: location.href,
       surroundingText: `上一层 Ask Chat 回答：${answerText || '无'}`,
+      currentParagraph,
       text
     });
   }, 0);
@@ -988,6 +996,7 @@ const CONTENT_PREFERENCE_DEFAULTS = {
   enabled: DEFAULT_OPTIONS.enabled,
   colorMode: DEFAULT_OPTIONS.colorMode,
   superMode: DEFAULT_OPTIONS.superMode,
+  quickMode: DEFAULT_OPTIONS.quickMode,
   themeColor: DEFAULT_OPTIONS.themeColor,
   triggerPlacement: DEFAULT_OPTIONS.triggerPlacement,
   panelWidth: DEFAULT_OPTIONS.panelWidth,
@@ -1013,6 +1022,7 @@ function applyContentPreferences(stored: Record<string, unknown>) {
   extensionEnabled = stored.enabled === undefined ? DEFAULT_OPTIONS.enabled : Boolean(stored.enabled);
   colorMode = stored.colorMode === 'dark' ? 'dark' : DEFAULT_OPTIONS.colorMode;
   superMode = stored.superMode === undefined ? DEFAULT_OPTIONS.superMode : Boolean(stored.superMode);
+  quickMode = stored.quickMode === undefined ? DEFAULT_OPTIONS.quickMode : Boolean(stored.quickMode);
   themeColor = ['purple', 'blue', 'green', 'orange', 'rose'].includes(String(stored.themeColor || ''))
     ? stored.themeColor as ThemeColor
     : DEFAULT_OPTIONS.themeColor;
@@ -1049,7 +1059,7 @@ chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreference
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') return;
-  const relevantKeys = ['enabled', 'colorMode', 'superMode', 'themeColor', 'triggerPlacement', 'panelWidth', 'panelHeight', 'translateShortcut', 'askShortcut'];
+  const relevantKeys = ['enabled', 'colorMode', 'superMode', 'quickMode', 'themeColor', 'triggerPlacement', 'panelWidth', 'panelHeight', 'translateShortcut', 'askShortcut'];
   if (!relevantKeys.some(key => changes[key])) return;
   chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
 });

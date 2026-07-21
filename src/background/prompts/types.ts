@@ -5,8 +5,10 @@ export interface PromptInput {
   pageTitle?: string;
   pageUrl?: string;
   surroundingText?: string;
+  currentParagraph?: string;
   userPrompt?: string;
   intent?: PromptIntent;
+  quickMode?: boolean;
   answerFormatInstruction?: string;
   enableAnswerFormatInstruction?: boolean;
 }

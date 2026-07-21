@@ -21,7 +21,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { margin: 0; min-height: 100%; }
+html, body, #root { margin: 0; min-height: 100%; overflow: hidden; }
 
 body {
   width: 390px;
@@ -70,7 +70,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 62px;
+  height: 56px;
   padding: 0 22px;
   background: var(--accent);
   color: #fff;
@@ -92,7 +92,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   transition: background 140ms ease, color 140ms ease;
 }
 .icon-button:hover { background: rgba(255, 255, 255, 0.13); color: #fff; }
-.popup-content { flex: 1; padding: 18px 22px 20px; }
+.popup-content { flex: 1; padding: 14px 22px; }
 .notice {
   display: flex;
   align-items: center;
@@ -102,9 +102,9 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   font-size: var(--font-sm);
 }
 .notice-warning {
-  min-height: 42px;
-  margin-bottom: 14px;
-  padding: 10px 12px;
+  min-height: 38px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
   border: 1px solid #f1bf43;
   border-radius: 8px;
   background: #fff1bf;
@@ -114,9 +114,9 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
 .notice-paused { color: var(--paused); }
 .notice strong { font-weight: 650; }
 
-.basic-settings { padding: 2px 0 20px; border-bottom: 1px solid var(--line); }
-.preference-list { display: grid; gap: 2px; margin-top: 10px; }
-.preference-row, .theme-picker { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 54px; }
+.basic-settings { padding: 2px 0 14px; border-bottom: 1px solid var(--line); }
+.preference-list { display: grid; gap: 2px; margin-top: 8px; }
+.preference-row, .theme-picker { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 46px; }
 .preference-row label, .theme-picker > div:first-child { min-width: 0; cursor: pointer; }
 .preference-row strong, .theme-picker strong { display: block; color: var(--ink); font-size: var(--font-sm); font-weight: 650; }
 .preference-row small, .theme-picker small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--font-xs); font-weight: 400; }
@@ -148,7 +148,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
 .theme-orange { --swatch: #b55312; }
 .theme-rose { --swatch: #a73559; }
 
-.model-panel { padding: 20px 0 8px; }
+.model-panel { padding: 14px 0 4px; }
 .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .section-title h2 { margin: 0; font-size: var(--font-md); font-weight: 700; }
 .section-title p { margin: 4px 0 0; color: var(--muted); font-size: var(--font-xs); }
@@ -159,8 +159,8 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   grid-template-columns: 26px minmax(0, 1fr) 20px;
   align-items: center;
   gap: 10px;
-  height: 52px;
-  margin-top: 14px;
+  height: 46px;
+  margin-top: 10px;
   color: var(--accent-text);
 }
 .model-icon { color: var(--accent-text); }
@@ -183,7 +183,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
+  min-height: 44px;
   margin-top: auto;
   padding: 0 22px;
   border-top: 1px solid var(--line);

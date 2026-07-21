@@ -5,6 +5,13 @@ function normalizeText(value: unknown, fallback = ''): string {
 }
 
 export function buildPageContext(input: PromptInput): string {
+  if (input.quickMode) {
+    return JSON.stringify({
+      currentParagraph: normalizeText(input.currentParagraph, '无'),
+      selectedText: normalizeText(input.selectedText)
+    }, null, 2);
+  }
+
   return JSON.stringify({
     pageTitle: normalizeText(input.pageTitle, '无'),
     pageUrl: normalizeText(input.pageUrl, '无'),

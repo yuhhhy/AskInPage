@@ -5,6 +5,7 @@ interface PopupState {
   enabled: boolean;
   colorMode: ColorMode;
   superMode: boolean;
+  quickMode: boolean;
   themeColor: ThemeColor;
   supported: boolean | null;
   connections: ApiConnection[];
@@ -38,6 +39,7 @@ export function usePopupState() {
     enabled: DEFAULT_OPTIONS.enabled,
     colorMode: DEFAULT_OPTIONS.colorMode,
     superMode: DEFAULT_OPTIONS.superMode,
+    quickMode: DEFAULT_OPTIONS.quickMode,
     themeColor: DEFAULT_OPTIONS.themeColor,
     supported: null,
     connections: DEFAULT_OPTIONS.connections,
@@ -62,6 +64,7 @@ export function usePopupState() {
         enabled: options.enabled,
         colorMode: options.colorMode,
         superMode: options.superMode,
+        quickMode: options.quickMode,
         themeColor: options.themeColor,
         connections: options.connections,
         activeConnectionId: options.activeConnectionId,
@@ -92,7 +95,7 @@ export function usePopupState() {
     };
   }, []);
 
-  async function updatePreference(key: 'enabled' | 'colorMode' | 'superMode' | 'themeColor', value: boolean | ColorMode | ThemeColor) {
+  async function updatePreference(key: 'enabled' | 'colorMode' | 'superMode' | 'quickMode' | 'themeColor', value: boolean | ColorMode | ThemeColor) {
     setState((current) => ({ ...current, [key]: value }));
     try {
       const response = await chrome.runtime.sendMessage({ type: 'ASK_CHAT_SET_PREFERENCE', key, value });

@@ -25,6 +25,7 @@ export interface SelectionTarget {
   pageTitle: string;
   pageUrl: string;
   surroundingText: string;
+  currentParagraph: string;
   text: string;
   intent?: Intent;
 }
