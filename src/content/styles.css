@@ -1,6 +1,15 @@
 #ask-chat-selection-root {
   all: initial;
   position: fixed;
+  display: block;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
   z-index: 2147483647;
   font-family: "Avenir Next", "Noto Sans SC", system-ui, sans-serif;
   font-size: 14px;
@@ -39,11 +48,13 @@ html.ask-chat-super-mode #ask-chat-selection-root [role="link"] {
 .ask-chat-popover {
   position: fixed;
   z-index: 2147483647;
+  pointer-events: auto;
 }
 
 .ask-chat-action-menu {
   position: fixed;
   z-index: 2147483647;
+  pointer-events: auto;
   min-width: 132px;
   padding: 5px;
   border: 1px solid #d7dce6;
@@ -55,6 +66,9 @@ html.ask-chat-super-mode #ask-chat-selection-root [role="link"] {
 .ask-chat-action-menu button {
   width: 100%;
   height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 0 10px;
   border: none;
   border-radius: 6px;
@@ -63,8 +77,15 @@ html.ask-chat-super-mode #ask-chat-selection-root [role="link"] {
   cursor: pointer;
   font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
   text-align: left;
+}
+
+.ask-chat-action-menu button svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  stroke-width: 1.75;
 }
 
 .ask-chat-action-menu button:hover {

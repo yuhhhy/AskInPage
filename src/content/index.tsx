@@ -85,9 +85,25 @@ function ensureRoot(): HTMLDivElement {
   }
   root = document.createElement('div');
   root.id = ASK_CHAT_ROOT_ID;
+  root.setAttribute('popover', 'manual');
   applyRootAppearance(root);
   document.documentElement.appendChild(root);
+  openRootInTopLayer(root);
   return root;
+}
+
+function openRootInTopLayer(target: HTMLDivElement, bringToFront = false) {
+  if (typeof target.showPopover !== 'function') return;
+  try {
+    if (bringToFront && target.matches(':popover-open')) target.hidePopover();
+    if (!target.matches(':popover-open')) target.showPopover();
+  } catch {
+    // Older Chromium versions fall back to the root's maximum z-index.
+  }
+}
+
+function bringRootToFront() {
+  openRootInTopLayer(ensureRoot(), true);
 }
 
 function applyRootAppearance(target: HTMLDivElement) {
@@ -701,6 +717,7 @@ function startWaitingRotation(id: string) {
 function renderButton(target: SelectionTarget): string {
   closeButtonPopovers();
   const id = createPopover(target);
+  bringRootToFront();
   syncUi();
   return id;
 }
