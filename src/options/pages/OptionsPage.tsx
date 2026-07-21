@@ -3,6 +3,7 @@ import { AnswerPreferenceFields } from '../components/AnswerPreferenceFields';
 import { DataManagementFields } from '../components/DataManagementFields';
 import { ModelConnectionFields } from '../components/ModelConnectionFields';
 import { PanelPreferenceFields } from '../components/PanelPreferenceFields';
+import { PrivacyDisclosure } from '../components/PrivacyDisclosure';
 import { SettingsHeader } from '../components/SettingsHeader';
 import { SettingsSection } from '../components/SettingsSection';
 import { ShortcutPreferenceFields } from '../components/ShortcutPreferenceFields';
@@ -29,6 +30,7 @@ export function OptionsPage() {
             onAdd={addConnection}
             onRemove={removeConnection}
           />
+          <PrivacyDisclosure />
         </SettingsSection>
 
         <SettingsSection index="02" title="回答偏好" titleId="answer-title">

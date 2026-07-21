@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
+import { getApiBaseUrlError } from '../../shared/api-url';
 import {
   DEFAULT_CONNECTION,
   DEFAULT_OPTIONS,
-  STORAGE_DEFAULTS,
   normalizeExtensionOptions,
   normalizeModels,
   type ApiConnection,
   type ExtensionOptions
 } from '../../shared/options';
+import { loadExtensionOptions, saveExtensionOptions as persistExtensionOptions } from '../../shared/storage';
 
 function createConnection(index: number): ApiConnection {
   return {
@@ -25,9 +26,7 @@ export function useExtensionOptions() {
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    chrome.storage.sync.get(STORAGE_DEFAULTS).then((stored) => {
-      setOptions(normalizeExtensionOptions(stored));
-    });
+    loadExtensionOptions().then(setOptions);
 
     const handleStorageChange = (
       changes: Record<string, chrome.storage.StorageChange>,
@@ -96,10 +95,15 @@ export function useExtensionOptions() {
         models: normalizeModels(connection.models, model)
       };
     });
+    const invalidConnection = normalizedConnections.find((connection) => getApiBaseUrlError(connection.apiBaseUrl));
+    if (invalidConnection) {
+      setStatus(`${invalidConnection.name}：${getApiBaseUrlError(invalidConnection.apiBaseUrl)}`);
+      window.setTimeout(() => setStatus(''), 3200);
+      return;
+    }
     const nextOptions = normalizeExtensionOptions({ ...options, connections: normalizedConnections });
 
-    await chrome.storage.sync.set(nextOptions);
-    setOptions(nextOptions);
+    setOptions(await persistExtensionOptions(nextOptions));
     setStatus('设置已保存');
     window.setTimeout(() => setStatus(''), 1600);
   }
@@ -132,8 +136,9 @@ export function useExtensionOptions() {
         throw new Error('invalid settings file');
       }
       const imported = normalizeExtensionOptions(source);
-      await chrome.storage.sync.set(imported);
-      setOptions(imported);
+      const invalidConnection = imported.connections.find((connection) => getApiBaseUrlError(connection.apiBaseUrl));
+      if (invalidConnection) throw new Error(getApiBaseUrlError(invalidConnection.apiBaseUrl));
+      setOptions(await persistExtensionOptions(imported));
       setStatus('配置已导入并生效');
     } catch {
       setStatus('导入失败：请选择有效的 AskInPage JSON 配置');

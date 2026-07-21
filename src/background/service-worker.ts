@@ -1,4 +1,6 @@
-import { DEFAULT_CONNECTION, DEFAULT_OPTIONS, STORAGE_DEFAULTS, getActiveConnection, normalizeExtensionOptions } from '../shared/options';
+import { isLoopbackApiUrl, normalizeChatCompletionsUrl } from '../shared/api-url';
+import { DEFAULT_CONNECTION, DEFAULT_OPTIONS, getActiveConnection } from '../shared/options';
+import { loadExtensionOptions } from '../shared/storage';
 import { buildPromptMessages } from './prompts';
 
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
@@ -18,15 +20,8 @@ async function saveAndBroadcastPreference(key, value) {
     })));
 }
 
-function normalizeBaseUrl(url) {
-  const trimmed = String(url || '').trim().replace(/\/+$/, '');
-  if (!trimmed) return DEFAULT_CONNECTION.apiBaseUrl;
-  return trimmed.endsWith('/chat/completions') ? trimmed : `${trimmed}/chat/completions`;
-}
-
 async function getOptions() {
-  const stored = await chrome.storage.sync.get(STORAGE_DEFAULTS);
-  return normalizeExtensionOptions(stored);
+  return loadExtensionOptions();
 }
 
 async function readOpenAiStream(response, onChunk, onActivity) {
@@ -70,7 +65,7 @@ async function readOpenAiStream(response, onChunk, onActivity) {
 async function explainSelection(payload, sender) {
   const options = await getOptions();
   const connection = getActiveConnection(options);
-  if (!connection.apiKey) {
+  if (!connection.apiKey && !isLoopbackApiUrl(connection.apiBaseUrl)) {
     throw new Error('请先在扩展设置中填写 API Key');
   }
 
@@ -106,12 +101,12 @@ async function explainSelection(payload, sender) {
   activeRequests.set(payload.requestId, { controller, clearTimers });
 
   try {
-    const res = await fetch(normalizeBaseUrl(connection.apiBaseUrl), {
+    const res = await fetch(normalizeChatCompletionsUrl(connection.apiBaseUrl, DEFAULT_CONNECTION.apiBaseUrl), {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${connection.apiKey}`
+        ...(connection.apiKey ? { Authorization: `Bearer ${connection.apiKey}` } : {})
       },
       body: JSON.stringify({
         model: connection.model,

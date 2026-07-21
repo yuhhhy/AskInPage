@@ -64,6 +64,7 @@ export function ModelConnectionFields({ connections, activeConnectionId, onSelec
 
         <label htmlFor={fieldId('base-url')}>OpenAI-compatible Base URL</label>
         <input id={fieldId('base-url')} value={activeConnection.apiBaseUrl} onChange={(event) => onChange(activeConnection.id, { apiBaseUrl: event.target.value })} placeholder="https://api.openai.com/v1" inputMode="url" />
+        <p className="field-help">远程地址必须使用 HTTPS；localhost、127.0.0.1 和 ::1 可以使用 HTTP。</p>
 
         <label htmlFor={fieldId('api-key')}>API Key</label>
         <div className="password-field">
@@ -72,6 +73,7 @@ export function ModelConnectionFields({ connections, activeConnectionId, onSelec
             {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
+        <p className="field-help">仅保存在当前设备；本机回环地址可以不填写。</p>
 
         <label htmlFor={fieldId('models')}>可选模型</label>
         <textarea

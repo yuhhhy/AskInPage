@@ -176,6 +176,13 @@ textarea:disabled { background: var(--disabled-surface); color: var(--disabled-t
 }
 .field-help { margin-top: 7px; color: var(--muted); font-size: var(--font-xs); }
 
+.privacy-disclosure { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 11px; margin-top: 24px; padding: 14px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--accent-soft); color: var(--accent-text); }
+.privacy-disclosure > svg { margin-top: 1px; }
+.privacy-disclosure strong { color: var(--ink); font-size: var(--font-sm); }
+.privacy-disclosure p { margin-top: 5px; color: var(--label); font-size: var(--font-xs); line-height: 1.65; }
+.privacy-disclosure a { color: var(--accent-text); font-weight: 700; text-underline-offset: 2px; }
+.privacy-disclosure a:hover { color: var(--accent-dark); }
+
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 560px; margin-top: 22px; }
 .toggle-row label { margin-top: 0; }
 .toggle-row small { display: block; margin-top: 3px; color: var(--muted); font-size: var(--font-xs); font-weight: 400; }

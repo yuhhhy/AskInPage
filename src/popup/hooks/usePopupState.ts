@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { DEFAULT_OPTIONS, STORAGE_DEFAULTS, getActiveConnection, normalizeExtensionOptions, type ApiConnection, type ColorMode, type ThemeColor } from '../../shared/options';
+import { DEFAULT_OPTIONS, getActiveConnection, type ApiConnection, type ColorMode, type ThemeColor } from '../../shared/options';
+import { getPublicOptions, loadExtensionOptions } from '../../shared/storage';
 
 interface PopupState {
   enabled: boolean;
@@ -53,8 +54,7 @@ export function usePopupState() {
     let secondFrame: number | null = null;
 
     async function loadState(includeSupport = false) {
-      const stored = await chrome.storage.sync.get(STORAGE_DEFAULTS);
-      const options = normalizeExtensionOptions(stored);
+      const options = getPublicOptions(await loadExtensionOptions());
       const supported = includeSupport
         ? await isSupportedTab((await chrome.tabs.query({ active: true, currentWindow: true }))[0])
         : undefined;
@@ -109,7 +109,10 @@ export function usePopupState() {
   async function selectModel(connectionId: string, model: string) {
     const connections = state.connections.map((connection) => connection.id === connectionId ? { ...connection, model } : connection);
     setState((current) => ({ ...current, connections, activeConnectionId: connectionId }));
-    await chrome.storage.sync.set({ connections, activeConnectionId: connectionId });
+    await chrome.storage.sync.set({
+      connections: connections.map(({ apiKey: _apiKey, ...connection }) => connection),
+      activeConnectionId: connectionId
+    });
   }
 
   const activeConnection = getActiveConnection({ ...DEFAULT_OPTIONS, connections: state.connections, activeConnectionId: state.activeConnectionId });

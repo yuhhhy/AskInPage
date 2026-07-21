@@ -79,7 +79,6 @@ export const STORAGE_DEFAULTS: Record<string, unknown> = {
   translateShortcut: DEFAULT_OPTIONS.translateShortcut,
   askShortcut: DEFAULT_OPTIONS.askShortcut,
   apiBaseUrl: '',
-  apiKey: '',
   model: '',
   models: []
 };
