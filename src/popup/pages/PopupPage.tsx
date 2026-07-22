@@ -8,7 +8,7 @@ import { t } from '../../shared/i18n';
 const GITHUB_URL = 'https://github.com/yuhhhy/AskInPage';
 
 export function PopupPage() {
-  const { enabled, supported, connections, activeConnectionId, version, colorMode, superMode, quickMode, themeColor, motionReady, updatePreference, selectModel } = usePopupState();
+  const { enabled, supported, connections, activeConnectionId, version, colorMode, enableAnswerFormatInstruction, superMode, quickMode, themeColor, motionReady, updatePreference, selectModel } = usePopupState();
 
   return (
     <main className={`popup-shell${motionReady ? ' motion-ready' : ''}`} data-mode={colorMode} data-theme={themeColor}>
@@ -25,12 +25,12 @@ export function PopupPage() {
         <SupportNotice supported={supported} enabled={enabled} />
         <BasicSettings
           enabled={enabled}
-          colorMode={colorMode}
+          enableAnswerFormatInstruction={enableAnswerFormatInstruction}
           superMode={superMode}
           quickMode={quickMode}
           themeColor={themeColor}
           onEnabledChange={(value) => updatePreference('enabled', value)}
-          onColorModeChange={(value) => updatePreference('colorMode', value)}
+          onEnableAnswerFormatInstructionChange={(value) => updatePreference('enableAnswerFormatInstruction', value)}
           onSuperModeChange={(value) => updatePreference('superMode', value)}
           onQuickModeChange={(value) => updatePreference('quickMode', value)}
           onThemeColorChange={(value) => updatePreference('themeColor', value)}

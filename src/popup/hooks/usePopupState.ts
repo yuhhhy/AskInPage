@@ -6,6 +6,7 @@ import { getUiLanguage, setUiLanguagePreference } from '../../shared/i18n';
 interface PopupState {
   enabled: boolean;
   colorMode: ColorMode;
+  enableAnswerFormatInstruction: boolean;
   superMode: boolean;
   quickMode: boolean;
   themeColor: ThemeColor;
@@ -40,6 +41,7 @@ export function usePopupState() {
   const [state, setState] = useState<PopupState>({
     enabled: DEFAULT_OPTIONS.enabled,
     colorMode: DEFAULT_OPTIONS.colorMode,
+    enableAnswerFormatInstruction: DEFAULT_OPTIONS.enableAnswerFormatInstruction,
     superMode: DEFAULT_OPTIONS.superMode,
     quickMode: DEFAULT_OPTIONS.quickMode,
     themeColor: DEFAULT_OPTIONS.themeColor,
@@ -66,6 +68,7 @@ export function usePopupState() {
         ...current,
         enabled: options.enabled,
         colorMode: options.colorMode,
+        enableAnswerFormatInstruction: options.enableAnswerFormatInstruction,
         superMode: options.superMode,
         quickMode: options.quickMode,
         themeColor: options.themeColor,
@@ -98,7 +101,7 @@ export function usePopupState() {
     };
   }, []);
 
-  async function updatePreference(key: 'enabled' | 'colorMode' | 'superMode' | 'quickMode' | 'themeColor', value: boolean | ColorMode | ThemeColor) {
+  async function updatePreference(key: 'enabled' | 'colorMode' | 'enableAnswerFormatInstruction' | 'superMode' | 'quickMode' | 'themeColor', value: boolean | ColorMode | ThemeColor) {
     setState((current) => ({ ...current, [key]: value }));
     try {
       const response = await chrome.runtime.sendMessage({ type: 'ASK_CHAT_SET_PREFERENCE', key, value });

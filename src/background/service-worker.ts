@@ -9,7 +9,7 @@ import { loadExtensionOptions } from '../shared/storage';
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
 const REQUEST_IDLE_TIMEOUT_MS = 45000;
 const activeRequests = new Map();
-const POPUP_PREFERENCE_KEYS = new Set(['enabled', 'colorMode', 'superMode', 'quickMode', 'themeColor']);
+const POPUP_PREFERENCE_KEYS = new Set(['enabled', 'colorMode', 'enableAnswerFormatInstruction', 'superMode', 'quickMode', 'themeColor']);
 
 class ExtensionRequestError extends Error {
   constructor(public readonly code: ErrorCode, public readonly details = '') {

@@ -32,14 +32,6 @@ export function AnswerPreferenceFields({ options, onChange }: AnswerPreferenceFi
       <label htmlFor="temperature">{t('temperatureLabel')}</label>
       <input id="temperature" type="number" min="0" max="2" step="0.1" value={options.temperature} onChange={(event) => onChange('temperature', Number(event.target.value))} />
 
-      <div className="toggle-row">
-        <div>
-          <label htmlFor="enableAnswerFormatInstruction">{t('enableCustomInstructions')}</label>
-          <small>{t('customInstructionsHelp')}</small>
-        </div>
-        <input id="enableAnswerFormatInstruction" type="checkbox" checked={options.enableAnswerFormatInstruction} onChange={(event) => onChange('enableAnswerFormatInstruction', event.target.checked)} />
-      </div>
-
       <label htmlFor="answerFormatInstruction">{t('customInstructions')}</label>
       <textarea
         id="answerFormatInstruction"
