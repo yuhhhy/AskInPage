@@ -1,17 +1,21 @@
+import { InfoHint } from './InfoHint';
+
 interface ToggleSwitchProps {
   id: string;
   checked: boolean;
   label: string;
-  description: string;
+  info?: string;
   onChange: (checked: boolean) => void;
 }
 
-export function ToggleSwitch({ id, checked, label, description, onChange }: ToggleSwitchProps) {
+export function ToggleSwitch({ id, checked, label, info, onChange }: ToggleSwitchProps) {
   return (
-    <div className="preference-row">
+    <div className="preference-row is-compact">
       <label htmlFor={id}>
-        <strong>{label}</strong>
-        <small>{description}</small>
+        <span className="preference-title">
+          <strong>{label}</strong>
+          {info && <InfoHint text={info} />}
+        </span>
       </label>
       <button
         id={id}

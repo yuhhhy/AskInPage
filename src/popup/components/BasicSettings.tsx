@@ -30,15 +30,14 @@ export function BasicSettings(props: BasicSettingsProps) {
         <h2 id="basic-settings-title">{t('basicSettings')}</h2>
       </div>
       <div className="preference-list">
-        <ToggleSwitch id="extension-enabled" checked={props.enabled} label={t('extensionToggle')} description={t('extensionToggleDescription')} onChange={props.onEnabledChange} />
-        <ToggleSwitch id="custom-instructions" checked={props.enableAnswerFormatInstruction} label={t('enableCustomInstructions')} description={t('customInstructionsHelp')} onChange={props.onEnableAnswerFormatInstructionChange} />
-        <ToggleSwitch id="super-mode" checked={props.superMode} label={t('superMode')} description={t('superModeDescription')} onChange={props.onSuperModeChange} />
-        <ToggleSwitch id="quick-mode" checked={props.quickMode} label={t('quickMode')} description={t('quickModeDescription')} onChange={props.onQuickModeChange} />
+        <ToggleSwitch id="extension-enabled" checked={props.enabled} label={t('extensionToggle')} onChange={props.onEnabledChange} />
+        <ToggleSwitch id="custom-instructions" checked={props.enableAnswerFormatInstruction} label={t('enableCustomInstructions')} onChange={props.onEnableAnswerFormatInstructionChange} />
+        <ToggleSwitch id="super-mode" checked={props.superMode} label={t('superMode')} info={t('superModeDescription')} onChange={props.onSuperModeChange} />
+        <ToggleSwitch id="quick-mode" checked={props.quickMode} label={t('quickMode')} info={t('quickModeDescription')} onChange={props.onQuickModeChange} />
       </div>
-      <div className="theme-picker">
+      <div className="theme-picker is-compact">
         <div>
           <strong>{t('themeColor')}</strong>
-          <small>{t('themeColorDescription')}</small>
         </div>
         <div className="theme-swatches" role="radiogroup" aria-label={t('themeColor')}>
           {THEMES.map((theme) => (
