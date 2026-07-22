@@ -2,13 +2,14 @@ import { Settings } from 'lucide-react';
 import { BasicSettings } from '../components/BasicSettings';
 import { ModelSelector } from '../components/ModelSelector';
 import { SupportNotice } from '../components/SupportNotice';
+import { UsageStats } from '../components/UsageStats';
 import { usePopupState } from '../hooks/usePopupState';
 import { t } from '../../shared/i18n';
 
 const GITHUB_URL = 'https://github.com/yuhhhy/AskInPage';
 
 export function PopupPage() {
-  const { enabled, supported, connections, activeConnectionId, version, colorMode, enableAnswerFormatInstruction, superMode, quickMode, themeColor, motionReady, updatePreference, selectModel } = usePopupState();
+  const { enabled, supported, connections, activeConnectionId, version, colorMode, enableAnswerFormatInstruction, superMode, quickMode, themeColor, usageStats, motionReady, updatePreference, selectModel } = usePopupState();
 
   return (
     <main className={`popup-shell${motionReady ? ' motion-ready' : ''}`} data-mode={colorMode} data-theme={themeColor}>
@@ -35,6 +36,7 @@ export function PopupPage() {
           onQuickModeChange={(value) => updatePreference('quickMode', value)}
           onThemeColorChange={(value) => updatePreference('themeColor', value)}
         />
+        <UsageStats stats={usageStats} />
         <ModelSelector connections={connections} activeConnectionId={activeConnectionId} disabled={!enabled} onChange={selectModel} />
       </div>
 

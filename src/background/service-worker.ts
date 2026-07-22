@@ -5,11 +5,49 @@ import { DEFAULT_CONNECTION, DEFAULT_OPTIONS, getActiveConnection } from '../sha
 import { getInterfaceResponseLanguage, getTranslationResponseLanguage } from '../shared/prompts/language';
 import { buildPromptMessages } from '../shared/prompts';
 import { loadExtensionOptions } from '../shared/storage';
+import { loadUsageStats, USAGE_STATS_STORAGE_KEY, type UsageStats } from '../shared/usage-stats';
 
 const REQUEST_TOTAL_TIMEOUT_MS = 180000;
 const REQUEST_IDLE_TIMEOUT_MS = 45000;
 const activeRequests = new Map();
 const POPUP_PREFERENCE_KEYS = new Set(['enabled', 'colorMode', 'enableAnswerFormatInstruction', 'superMode', 'quickMode', 'themeColor']);
+let usageStatsWriteQueue: Promise<void> = Promise.resolve();
+
+function updateUsageStats(update: (current: UsageStats) => UsageStats): Promise<void> {
+  usageStatsWriteQueue = usageStatsWriteQueue
+    .catch(() => {})
+    .then(async () => {
+      const current = await loadUsageStats();
+      await chrome.storage.local.set({ [USAGE_STATS_STORAGE_KEY]: update(current) });
+    })
+    .catch(() => {});
+  return usageStatsWriteQueue;
+}
+
+function recordStartedRequest(): Promise<void> {
+  return updateUsageStats((current) => ({ ...current, requestCount: current.requestCount + 1 }));
+}
+
+function recordReportedUsage(totalTokens: number): Promise<void> {
+  return updateUsageStats((current) => ({
+    ...current,
+    usageReportedRequestCount: current.usageReportedRequestCount + 1,
+    totalTokens: current.totalTokens + totalTokens
+  }));
+}
+
+function getReportedTotalTokens(usage: unknown): number | null {
+  if (!usage || typeof usage !== 'object') return null;
+  const source = usage as Record<string, unknown>;
+  const total = Number(source.total_tokens);
+  if (Number.isFinite(total) && total >= 0) return Math.floor(total);
+
+  const prompt = Number(source.prompt_tokens ?? source.input_tokens);
+  const completion = Number(source.completion_tokens ?? source.output_tokens);
+  return Number.isFinite(prompt) && prompt >= 0 && Number.isFinite(completion) && completion >= 0
+    ? Math.floor(prompt) + Math.floor(completion)
+    : null;
+}
 
 class ExtensionRequestError extends Error {
   constructor(public readonly code: ErrorCode, public readonly details = '') {
@@ -55,6 +93,7 @@ async function readOpenAiStream(response, onChunk, onActivity) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
+  let reportedTotalTokens: number | null = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -70,7 +109,7 @@ async function readOpenAiStream(response, onChunk, onActivity) {
         if (!line.startsWith('data:')) continue;
         const data = line.slice(5).trim();
         if (!data) continue;
-        if (data === '[DONE]') return;
+        if (data === '[DONE]') return reportedTotalTokens;
 
         let parsed;
         try {
@@ -80,9 +119,13 @@ async function readOpenAiStream(response, onChunk, onActivity) {
         }
         const delta = parsed.choices?.[0]?.delta?.content || '';
         if (delta) onChunk(delta);
+        const usageTotal = getReportedTotalTokens(parsed.usage);
+        if (usageTotal !== null) reportedTotalTokens = usageTotal;
       }
     }
   }
+
+  return reportedTotalTokens;
 }
 
 async function explainSelection(payload, sender) {
@@ -128,28 +171,41 @@ async function explainSelection(payload, sender) {
   activeRequests.set(payload.requestId, { controller, clearTimers });
 
   try {
-    const res = await fetch(normalizeChatCompletionsUrl(connection.apiBaseUrl, DEFAULT_CONNECTION.apiBaseUrl), {
+    await recordStartedRequest();
+    const requestUrl = normalizeChatCompletionsUrl(connection.apiBaseUrl, DEFAULT_CONNECTION.apiBaseUrl);
+    const requestHeaders = {
+      'Content-Type': 'application/json',
+      ...(connection.apiKey ? { Authorization: `Bearer ${connection.apiKey}` } : {})
+    };
+    const requestBody = {
+      model: connection.model,
+      temperature: Number(options.temperature) || DEFAULT_OPTIONS.temperature,
+      stream: true,
+      messages: buildPromptMessages({
+        ...payload,
+        quickMode: options.quickMode,
+        answerFormatInstruction: options.answerFormatInstruction,
+        enableAnswerFormatInstruction: options.enableAnswerFormatInstruction,
+        responseLanguage: payload.intent === 'translate'
+          ? getTranslationResponseLanguage(options.translationTarget)
+          : getInterfaceResponseLanguage()
+      })
+    };
+    const sendRequest = (includeUsage: boolean) => fetch(requestUrl, {
       method: 'POST',
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(connection.apiKey ? { Authorization: `Bearer ${connection.apiKey}` } : {})
-      },
+      headers: requestHeaders,
       body: JSON.stringify({
-        model: connection.model,
-        temperature: Number(options.temperature) || DEFAULT_OPTIONS.temperature,
-        stream: true,
-        messages: buildPromptMessages({
-          ...payload,
-          quickMode: options.quickMode,
-          answerFormatInstruction: options.answerFormatInstruction,
-          enableAnswerFormatInstruction: options.enableAnswerFormatInstruction,
-          responseLanguage: payload.intent === 'translate'
-            ? getTranslationResponseLanguage(options.translationTarget)
-            : getInterfaceResponseLanguage()
-        })
+        ...requestBody,
+        ...(includeUsage ? { stream_options: { include_usage: true } } : {})
       })
     });
+
+    let res = await sendRequest(true);
+    if (res.status >= 400 && res.status < 500) {
+      const errorDetails = await res.text();
+      if (/stream_options|include_usage/i.test(errorDetails)) res = await sendRequest(false);
+    }
 
     if (!res.ok) {
       throw new ExtensionRequestError('MODEL_REQUEST_FAILED', `HTTP ${res.status}`);
@@ -157,7 +213,7 @@ async function explainSelection(payload, sender) {
 
     let content = '';
     resetIdleTimer();
-    await readOpenAiStream(res, (chunk) => {
+    const reportedTotalTokens = await readOpenAiStream(res, (chunk) => {
       content += chunk;
       chrome.tabs.sendMessage(sender.tab.id, {
         type: 'ASK_CHAT_DELTA',
@@ -165,6 +221,8 @@ async function explainSelection(payload, sender) {
         chunk
       }).catch(() => {});
     }, resetIdleTimer);
+
+    if (reportedTotalTokens !== null) await recordReportedUsage(reportedTotalTokens);
 
     if (!content.trim()) {
       throw new ExtensionRequestError('EMPTY_MODEL_RESPONSE');

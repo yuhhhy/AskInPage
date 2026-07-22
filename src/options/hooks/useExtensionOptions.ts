@@ -10,6 +10,7 @@ import {
 } from '../../shared/options';
 import { loadExtensionOptions, saveExtensionOptions as persistExtensionOptions } from '../../shared/storage';
 import { getUiLanguage, normalizeUiLanguagePreference, setUiLanguagePreference, t } from '../../shared/i18n';
+import { loadUsageStats } from '../../shared/usage-stats';
 
 function getLocalizedApiUrlError(code: string): string {
   if (code === 'invalid') return t('apiUrlInvalid');
@@ -126,12 +127,14 @@ export function useExtensionOptions() {
     window.setTimeout(() => setStatus(''), 1600);
   }
 
-  function exportOptions() {
+  async function exportOptions() {
+    const usageStats = await loadUsageStats();
     const payload = {
       format: 'askinpage-settings',
       version: 1,
       exportedAt: new Date().toISOString(),
-      settings: options
+      settings: options,
+      usageStats
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

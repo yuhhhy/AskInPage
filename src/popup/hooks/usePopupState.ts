@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { DEFAULT_OPTIONS, getActiveConnection, type ApiConnection, type ColorMode, type ThemeColor } from '../../shared/options';
 import { getPublicOptions, loadExtensionOptions } from '../../shared/storage';
 import { getUiLanguage, setUiLanguagePreference } from '../../shared/i18n';
+import { DEFAULT_USAGE_STATS, loadUsageStats, normalizeUsageStats, USAGE_STATS_STORAGE_KEY, type UsageStats } from '../../shared/usage-stats';
 
 interface PopupState {
   enabled: boolean;
@@ -13,6 +14,7 @@ interface PopupState {
   supported: boolean | null;
   connections: ApiConnection[];
   activeConnectionId: string;
+  usageStats: UsageStats;
   version: string;
 }
 
@@ -48,6 +50,7 @@ export function usePopupState() {
     supported: null,
     connections: DEFAULT_OPTIONS.connections,
     activeConnectionId: DEFAULT_OPTIONS.activeConnectionId,
+    usageStats: DEFAULT_USAGE_STATS,
     version: chrome.runtime.getManifest().version
   });
 
@@ -57,7 +60,8 @@ export function usePopupState() {
     let secondFrame: number | null = null;
 
     async function loadState(includeSupport = false) {
-      const options = getPublicOptions(await loadExtensionOptions());
+      const [loadedOptions, usageStats] = await Promise.all([loadExtensionOptions(), loadUsageStats()]);
+      const options = getPublicOptions(loadedOptions);
       setUiLanguagePreference(options.uiLanguage);
       document.documentElement.lang = getUiLanguage();
       const supported = includeSupport
@@ -74,6 +78,7 @@ export function usePopupState() {
         themeColor: options.themeColor,
         connections: options.connections,
         activeConnectionId: options.activeConnectionId,
+        usageStats,
         supported: supported ?? current.supported
       }));
       if (includeSupport) {
@@ -88,8 +93,14 @@ export function usePopupState() {
     }
 
     loadState(true);
-    const handleStorageChange = (_changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+    const handleStorageChange = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
       if (areaName === 'sync') loadState();
+      if (areaName === 'local' && changes[USAGE_STATS_STORAGE_KEY]) {
+        setState((current) => ({
+          ...current,
+          usageStats: normalizeUsageStats(changes[USAGE_STATS_STORAGE_KEY].newValue)
+        }));
+      }
     };
     chrome.storage.onChanged.addListener(handleStorageChange);
 

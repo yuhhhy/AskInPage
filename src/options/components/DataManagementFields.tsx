@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { t } from '../../shared/i18n';
 
 interface DataManagementFieldsProps {
-  onExport: () => void;
+  onExport: () => Promise<void>;
   onImport: (file: File) => Promise<void>;
 }
 
