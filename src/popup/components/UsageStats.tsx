@@ -11,14 +11,10 @@ function formatNumber(value: number): string {
 }
 
 export function UsageStats({ stats }: UsageStatsProps) {
-  const unreportedCount = Math.max(0, stats.requestCount - stats.usageReportedRequestCount);
-  const isComplete = unreportedCount === 0;
-
   return (
     <section className="usage-stats" aria-labelledby="usage-stats-title">
       <div className="section-title usage-stats-heading">
         <h2 id="usage-stats-title">{t('usageStats')}</h2>
-        {!isComplete && <span className="usage-quality">{t('usagePartial')}</span>}
       </div>
       <div className="usage-metrics">
         <div className="usage-metric">
@@ -30,7 +26,6 @@ export function UsageStats({ stats }: UsageStatsProps) {
           <div><strong>{formatNumber(stats.totalTokens)}</strong><small>{t('reportedTokens')}</small></div>
         </div>
       </div>
-      {!isComplete && <p className="usage-note">{t('usagePartialDescription', String(unreportedCount))}</p>}
     </section>
   );
 }

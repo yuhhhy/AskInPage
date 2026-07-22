@@ -26,11 +26,13 @@ export function PopupPage() {
         <SupportNotice supported={supported} enabled={enabled} />
         <BasicSettings
           enabled={enabled}
+          colorMode={colorMode}
           enableAnswerFormatInstruction={enableAnswerFormatInstruction}
           superMode={superMode}
           quickMode={quickMode}
           themeColor={themeColor}
           onEnabledChange={(value) => updatePreference('enabled', value)}
+          onColorModeChange={(value) => updatePreference('colorMode', value)}
           onEnableAnswerFormatInstructionChange={(value) => updatePreference('enableAnswerFormatInstruction', value)}
           onSuperModeChange={(value) => updatePreference('superMode', value)}
           onQuickModeChange={(value) => updatePreference('quickMode', value)}

@@ -24,14 +24,10 @@ function updateUsageStats(update: (current: UsageStats) => UsageStats): Promise<
   return usageStatsWriteQueue;
 }
 
-function recordStartedRequest(): Promise<void> {
-  return updateUsageStats((current) => ({ ...current, requestCount: current.requestCount + 1 }));
-}
-
 function recordReportedUsage(totalTokens: number): Promise<void> {
   return updateUsageStats((current) => ({
     ...current,
-    usageReportedRequestCount: current.usageReportedRequestCount + 1,
+    requestCount: current.requestCount + 1,
     totalTokens: current.totalTokens + totalTokens
   }));
 }
@@ -171,7 +167,6 @@ async function explainSelection(payload, sender) {
   activeRequests.set(payload.requestId, { controller, clearTimers });
 
   try {
-    await recordStartedRequest();
     const requestUrl = normalizeChatCompletionsUrl(connection.apiBaseUrl, DEFAULT_CONNECTION.apiBaseUrl);
     const requestHeaders = {
       'Content-Type': 'application/json',

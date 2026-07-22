@@ -36,10 +36,10 @@ body {
 button, select { font: inherit; }
 button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 24%, transparent); outline-offset: 2px; }
 .popup-shell {
-  display: flex;
-  height: auto;
+  display: grid;
+  grid-template-rows: max-content max-content max-content;
+  height: max-content;
   min-height: 0;
-  flex-direction: column;
   overflow: clip;
   background: var(--canvas);
   color: var(--ink);
@@ -72,7 +72,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
+  height: 52px;
   padding: 0 22px;
   background: var(--accent);
   color: #fff;
@@ -94,7 +94,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   transition: background 140ms ease, color 140ms ease;
 }
 .icon-button:hover { background: rgba(255, 255, 255, 0.13); color: #fff; }
-.popup-content { flex: none; padding: 12px 22px; }
+.popup-content { min-height: 0; padding: 10px 22px; }
 .notice {
   display: flex;
   align-items: center;
@@ -116,10 +116,10 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
 .notice-paused { color: var(--paused); }
 .notice strong { font-weight: 650; }
 
-.basic-settings { padding: 0 0 10px; border-bottom: 1px solid var(--line); }
-.preference-list { display: grid; gap: 2px; margin-top: 6px; }
+.basic-settings { padding: 0 0 8px; border-bottom: 1px solid var(--line); }
+.preference-list { display: grid; gap: 0; margin-top: 5px; }
 .preference-row, .theme-picker { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 46px; }
-.preference-row.is-compact, .theme-picker.is-compact { min-height: 38px; }
+.preference-row.is-compact, .theme-picker.is-compact { min-height: 34px; }
 .preference-row label, .theme-picker > div:first-child { min-width: 0; cursor: pointer; }
 .theme-picker > div:first-child { cursor: default; }
 .preference-title { display: flex; align-items: center; gap: 5px; }
@@ -158,17 +158,15 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
 .theme-orange { --swatch: #b55312; }
 .theme-rose { --swatch: #a73559; }
 
-.usage-stats { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.usage-stats { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .usage-stats-heading { align-items: center; }
-.usage-quality { padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, var(--line) 48%, var(--canvas)); color: var(--muted); font-size: 10px; font-weight: 700; line-height: 1.4; }
 .usage-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-.usage-metric { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--accent-soft) 45%, var(--canvas)); color: var(--accent-text); }
+.usage-metric { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--accent-soft) 45%, var(--canvas)); color: var(--accent-text); }
 .usage-metric > div { display: grid; min-width: 0; }
 .usage-metric strong { overflow: hidden; color: var(--ink); font-size: var(--font-md); font-variant-numeric: tabular-nums; font-weight: 650; line-height: 1.2; text-overflow: ellipsis; }
 .usage-metric small { margin-top: 2px; color: var(--muted); font-size: 10px; }
-.usage-note { margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 
-.model-panel { padding: 10px 0 2px; }
+.model-panel { padding: 8px 0 0; }
 .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .section-title h2 { margin: 0; font-size: var(--font-md); font-weight: 700; }
 .section-title p { margin: 4px 0 0; color: var(--muted); font-size: var(--font-xs); }
@@ -203,8 +201,8 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 40px;
-  margin-top: auto;
+  min-height: 36px;
+  margin-top: 0;
   padding: 0 22px;
   border-top: 1px solid var(--line);
   color: var(--faint);

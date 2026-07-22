@@ -1,14 +1,16 @@
-import type { ThemeColor } from '../../shared/options';
+import type { ColorMode, ThemeColor } from '../../shared/options';
 import { t } from '../../shared/i18n';
 import { ToggleSwitch } from './ToggleSwitch';
 
 interface BasicSettingsProps {
   enabled: boolean;
+  colorMode: ColorMode;
   enableAnswerFormatInstruction: boolean;
   superMode: boolean;
   quickMode: boolean;
   themeColor: ThemeColor;
   onEnabledChange: (value: boolean) => void;
+  onColorModeChange: (value: ColorMode) => void;
   onEnableAnswerFormatInstructionChange: (value: boolean) => void;
   onSuperModeChange: (value: boolean) => void;
   onQuickModeChange: (value: boolean) => void;
@@ -31,6 +33,7 @@ export function BasicSettings(props: BasicSettingsProps) {
       </div>
       <div className="preference-list">
         <ToggleSwitch id="extension-enabled" checked={props.enabled} label={t('extensionToggle')} onChange={props.onEnabledChange} />
+        <ToggleSwitch id="dark-mode" checked={props.colorMode === 'dark'} label={t('darkMode')} onChange={(checked) => props.onColorModeChange(checked ? 'dark' : 'light')} />
         <ToggleSwitch id="custom-instructions" checked={props.enableAnswerFormatInstruction} label={t('enableCustomInstructions')} onChange={props.onEnableAnswerFormatInstructionChange} />
         <ToggleSwitch id="super-mode" checked={props.superMode} label={t('superMode')} info={t('superModeDescription')} onChange={props.onSuperModeChange} />
         <ToggleSwitch id="quick-mode" checked={props.quickMode} label={t('quickMode')} info={t('quickModeDescription')} onChange={props.onQuickModeChange} />

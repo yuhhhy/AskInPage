@@ -22,19 +22,6 @@ const PLACEMENT_OPTIONS = [
 export function PanelPreferenceFields({ options, onChange }: PanelPreferenceFieldsProps) {
   return (
     <div className="panel-preferences">
-      <div className="toggle-row panel-mode-preference">
-        <div>
-          <label htmlFor="darkMode">{t('darkMode')}</label>
-          <small>{t('darkModeDescription')}</small>
-        </div>
-        <input
-          id="darkMode"
-          type="checkbox"
-          checked={options.colorMode === 'dark'}
-          onChange={(event) => onChange('colorMode', event.target.checked ? 'dark' : 'light')}
-        />
-      </div>
-
       <div className="position-preference">
         <div className="preference-heading">
           <div>
