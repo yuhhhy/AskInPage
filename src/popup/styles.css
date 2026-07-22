@@ -164,7 +164,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
 .usage-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
 .usage-metric { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--accent-soft) 45%, var(--canvas)); color: var(--accent-text); }
 .usage-metric > div { display: grid; min-width: 0; }
-.usage-metric strong { overflow: hidden; color: var(--ink); font-size: var(--font-md); font-variant-numeric: tabular-nums; font-weight: 750; line-height: 1.2; text-overflow: ellipsis; }
+.usage-metric strong { overflow: hidden; color: var(--ink); font-size: var(--font-md); font-variant-numeric: tabular-nums; font-weight: 650; line-height: 1.2; text-overflow: ellipsis; }
 .usage-metric small { margin-top: 2px; color: var(--muted); font-size: 10px; }
 .usage-note { margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 

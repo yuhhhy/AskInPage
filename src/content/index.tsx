@@ -84,6 +84,8 @@ interface ActiveSelection {
   selection: Selection;
   text: string;
   range: Range;
+  rect?: ViewportRect;
+  textControl?: HTMLInputElement | HTMLTextAreaElement;
 }
 
 function ensureRoot(): HTMLDivElement {
@@ -184,6 +186,54 @@ function getSelectionText(selection: Selection, range: Range): string {
   return normalizeText(selection.toString() || range.toString() || range.cloneContents().textContent || '');
 }
 
+function getTextControlSelection(
+  eventTarget?: EventTarget | null,
+  eventPath: EventTarget[] = []
+): ActiveSelection | null {
+  if (!superMode) return null;
+  const candidates = [eventTarget, ...eventPath];
+  const control = candidates.find((item): item is HTMLInputElement | HTMLTextAreaElement => (
+    item instanceof HTMLTextAreaElement
+    || (item instanceof HTMLInputElement && item.type !== 'password')
+  ));
+  if (!control || isInsideAskChat(control)) return null;
+
+  let start: number | null = null;
+  let end: number | null = null;
+  try {
+    start = control.selectionStart;
+    end = control.selectionEnd;
+  } catch {
+    return null;
+  }
+  if (start === null || end === null || start === end) return null;
+
+  const text = normalizeText(control.value.slice(Math.min(start, end), Math.max(start, end)));
+  if (!text) return null;
+
+  try {
+    const range = document.createRange();
+    range.selectNode(control);
+    const rect = control.getBoundingClientRect();
+    return {
+      selection: createSyntheticSelection(range, text),
+      text,
+      range,
+      rect: {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      },
+      textControl: control
+    };
+  } catch {
+    return null;
+  }
+}
+
 function getComposedSelection(selection: Selection | null): ActiveSelection | null {
   if (!selection || selection.isCollapsed) return null;
   const selectionWithComposedRanges = selection as Selection & {
@@ -222,6 +272,9 @@ function getComposedSelection(selection: Selection | null): ActiveSelection | nu
 }
 
 function getActiveSelection(eventTarget?: EventTarget | null, eventPath: EventTarget[] = []): ActiveSelection | null {
+  const textControlSelection = getTextControlSelection(eventTarget, eventPath);
+  if (textControlSelection) return textControlSelection;
+
   const eventRoots = eventPath
     .filter((item): item is Node => item instanceof Node)
     .map(node => node.getRootNode())
@@ -612,6 +665,38 @@ function buildSafeSelectionContext(selection: Selection, selectedText: string): 
   }
 }
 
+function buildTextControlSelectionContext(
+  control: HTMLInputElement | HTMLTextAreaElement,
+  selectedText: string
+): SelectionContext {
+  const block = getSemanticBlock(control) || control.parentElement || document.body;
+  const nearbyText = getCleanElementText(block);
+  const context: SelectionContext = {
+    selectedText,
+    page: {
+      title: document.title || '',
+      url: location.href,
+      language: getPageLanguage() || '',
+      description: getMetaDescription()
+    },
+    selection: {
+      blockTag: control.tagName.toLowerCase(),
+      structureText: t('contextElementTag', control.tagName.toLowerCase()),
+      tableContext: ''
+    },
+    domPath: getHeadingChain(block),
+    localContext: {
+      previousText: getSiblingContext(block, 'previous'),
+      currentText: windowAroundSelection(nearbyText, selectedText, MAX_LOCAL_CONTEXT_CHARS) || selectedText,
+      nextText: getSiblingContext(block, 'next')
+    },
+    mainContext: windowAroundSelection(getMainText(selectedText), selectedText, MAX_PAGE_CONTEXT_CHARS),
+    formattedText: ''
+  };
+  context.formattedText = formatSelectionContext(context);
+  return context;
+}
+
 function syncUi() {
   if (!reactRoot) reactRoot = createRoot(ensureRoot());
   reactRoot.render(<AskChatApp states={[...popovers.values()]} actions={askChatActions} />);
@@ -874,11 +959,13 @@ function handlePageSelection(
     return;
   }
 
-  const { selection, text, range } = activeSelection;
+  const { selection, text, range, rect: selectionRect, textControl } = activeSelection;
   if (isInsideAskChat(selection.anchorNode) || isInsideAskChat(selection.focusNode)) return;
   if (gesture) lastProcessedGestureId = gesture.id;
-  const rect = getSelectionRect(range);
-  const fallbackContext = buildFallbackSelectionContext(selection, text);
+  const rect = selectionRect || getSelectionRect(range);
+  const fallbackContext = textControl
+    ? buildTextControlSelectionContext(textControl, text)
+    : buildFallbackSelectionContext(selection, text);
   fallbackContext.formattedText = formatSelectionContext(fallbackContext);
   const id = renderButton({
     rect,
@@ -892,7 +979,9 @@ function handlePageSelection(
     const state = popovers.get(id);
     if (!state) return;
     if (quickMode) return;
-    const context = buildSafeSelectionContext(selection, text);
+    const context = textControl
+      ? buildTextControlSelectionContext(textControl, text)
+      : buildSafeSelectionContext(selection, text);
     state.target = {
       ...state.target,
       pageTitle: context.page.title || document.title,

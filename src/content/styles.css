@@ -32,6 +32,13 @@ html.ask-chat-super-mode [role="link"] {
   user-select: text !important;
 }
 
+html.ask-chat-super-mode input:not([type="password"]),
+html.ask-chat-super-mode textarea {
+  cursor: text !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
 html.ask-chat-super-mode #ask-chat-selection-root button,
 html.ask-chat-super-mode #ask-chat-selection-root a[href],
 html.ask-chat-super-mode #ask-chat-selection-root [role="button"],

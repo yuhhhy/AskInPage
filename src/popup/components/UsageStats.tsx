@@ -30,9 +30,7 @@ export function UsageStats({ stats }: UsageStatsProps) {
           <div><strong>{formatNumber(stats.totalTokens)}</strong><small>{t('reportedTokens')}</small></div>
         </div>
       </div>
-      <p className="usage-note">
-        {isComplete ? t('usageCompleteDescription') : t('usagePartialDescription', String(unreportedCount))}
-      </p>
+      {!isComplete && <p className="usage-note">{t('usagePartialDescription', String(unreportedCount))}</p>}
     </section>
   );
 }
