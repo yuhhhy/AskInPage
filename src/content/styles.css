@@ -24,8 +24,22 @@
 
 html.ask-chat-super-mode button,
 html.ask-chat-super-mode a[href],
+html.ask-chat-super-mode summary,
+html.ask-chat-super-mode label[for],
 html.ask-chat-super-mode [role="button"],
-html.ask-chat-super-mode [role="link"] {
+html.ask-chat-super-mode [role="link"],
+html.ask-chat-super-mode [role="menuitem"],
+html.ask-chat-super-mode [role="menuitemcheckbox"],
+html.ask-chat-super-mode [role="menuitemradio"],
+html.ask-chat-super-mode [role="tab"],
+html.ask-chat-super-mode [role="option"],
+html.ask-chat-super-mode [role="checkbox"],
+html.ask-chat-super-mode [role="radio"],
+html.ask-chat-super-mode [role="switch"],
+html.ask-chat-super-mode [onclick],
+html.ask-chat-super-mode [onpointerdown],
+html.ask-chat-super-mode [onpointerup],
+html.ask-chat-super-mode [tabindex]:not([tabindex="-1"]):not(input):not(textarea):not(select):not([contenteditable]) {
   cursor: text !important;
   -webkit-user-drag: none !important;
   -webkit-user-select: text !important;

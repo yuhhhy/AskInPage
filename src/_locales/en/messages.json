@@ -11,7 +11,7 @@
   "darkMode": { "message": "Dark reading" },
   "darkModeDescription": { "message": "Use a dark appearance for answer panels" },
   "superMode": { "message": "Super mode" },
-  "superModeDescription": { "message": "Block page button and link actions, and allow text selection inside buttons, links, and text fields" },
+  "superModeDescription": { "message": "Block clickable page controls, and allow text selection inside controls and text fields" },
   "quickMode": { "message": "Quick mode" },
   "quickModeDescription": { "message": "Only send the current paragraph and selection; answers may be less accurate" },
   "themeColor": { "message": "Theme color" },

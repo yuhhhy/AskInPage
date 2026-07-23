@@ -11,7 +11,7 @@
   "darkMode": { "message": "夜间阅读" },
   "darkModeDescription": { "message": "回答弹窗使用深色外观" },
   "superMode": { "message": "超级模式" },
-  "superModeDescription": { "message": "拦截网页按钮和链接的交互，并允许选择按钮、链接及输入框中的文字" },
+  "superModeDescription": { "message": "拦截网页可点击控件的交互，并允许选择控件及输入框中的文字" },
   "quickMode": { "message": "快速模式" },
   "quickModeDescription": { "message": "仅提供当前段落和选中文字，会削弱回答效果和准确性" },
   "themeColor": { "message": "主题颜色" },

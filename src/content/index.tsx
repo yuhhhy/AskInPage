@@ -57,11 +57,11 @@ let pendingSelectionTimer: number | null = null;
 let pendingSelectionRequest: SelectionRequest | null = null;
 let activeSuperModeSelection: {
   pointerId: number;
-  button: Element;
+  control: Element;
   startX: number;
   startY: number;
   moved: boolean;
-  selectionScheduled: boolean;
+  restoreSelectableStyles: () => void;
 } | null = null;
 
 interface PointerGesture {
@@ -78,6 +78,7 @@ interface SelectionRequest {
   eventPath: EventTarget[];
   gesture: PointerGesture | null;
   retry: boolean;
+  selectionOverride?: ActiveSelection;
 }
 
 interface ActiveSelection {
@@ -123,7 +124,10 @@ function applyRootAppearance(target: HTMLDivElement) {
 
 function syncSuperMode() {
   document.documentElement.classList.toggle('ask-chat-super-mode', extensionEnabled && superMode);
-  if (!extensionEnabled || !superMode) activeSuperModeSelection = null;
+  if ((!extensionEnabled || !superMode) && activeSuperModeSelection) {
+    activeSuperModeSelection.restoreSelectableStyles();
+    activeSuperModeSelection = null;
+  }
 }
 
 function isInsideAskChat(node) {
@@ -946,12 +950,15 @@ function handlePageSelection(
   eventTarget?: EventTarget | null,
   eventPath: EventTarget[] = [],
   gesture: PointerGesture | null = lastPointerGesture,
-  retry = true
+  retry = true,
+  selectionOverride?: ActiveSelection
 ) {
   if (!extensionEnabled) return;
   if (gesture && gesture.id === lastProcessedGestureId) return;
 
-  const activeSelection = getActiveSelection(eventTarget, eventPath) || getGestureSelection(gesture);
+  const activeSelection = selectionOverride
+    || getActiveSelection(eventTarget, eventPath)
+    || getGestureSelection(gesture);
   if (!activeSelection) {
     if (retry) {
       schedulePageSelection({ eventTarget, eventPath, gesture, retry: false }, 80);
@@ -1004,7 +1011,8 @@ function schedulePageSelection(request: SelectionRequest, delay = 32) {
       pendingRequest.eventTarget,
       pendingRequest.eventPath,
       pendingRequest.gesture,
-      pendingRequest.retry
+      pendingRequest.retry,
+      pendingRequest.selectionOverride
     );
   }, delay);
 }
@@ -1157,55 +1165,232 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   chrome.storage.sync.get(CONTENT_PREFERENCE_DEFAULTS).then(applyContentPreferences);
 });
 
-function getSuperModeButton(event: Event): Element | null {
-  if (!extensionEnabled || !superMode || !event.isTrusted || eventIsInsideAskChat(event)) return null;
-  const button = getEventPath(event).find((item): item is Element => item instanceof Element && item.matches([
-    'button',
-    'a[href]',
-    '[role="button"]',
-    '[role="link"]',
-    'input[type="button"]',
-    'input[type="submit"]',
-    'input[type="reset"]'
-  ].join(', '))) || null;
-  if (!button) return null;
-  const rect = button.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0 ? button : null;
+const SUPER_MODE_SEMANTIC_CONTROL_SELECTOR = [
+  'button',
+  'a[href]',
+  'summary',
+  'label[for]',
+  'input[type="button"]',
+  'input[type="submit"]',
+  'input[type="reset"]',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]',
+  '[role="menuitemradio"]',
+  '[role="tab"]',
+  '[role="option"]',
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="switch"]'
+].join(', ');
+
+const SUPER_MODE_EVENT_HANDLER_ATTRIBUTES = [
+  'onclick',
+  'onmousedown',
+  'onmouseup',
+  'onpointerdown',
+  'onpointerup'
+];
+const temporarilySelectableSuperModeControls = new WeakSet<Element>();
+
+function isVisibleControl(element: Element): boolean {
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden' && style.pointerEvents !== 'none';
 }
 
-function selectSuperModeButtonText(button: Element): string {
+function hasInlineInteraction(element: Element): boolean {
+  if (SUPER_MODE_EVENT_HANDLER_ATTRIBUTES.some(attribute => element.hasAttribute(attribute))) return true;
+  const interactiveElement = element as HTMLElement & Record<string, unknown>;
+  return SUPER_MODE_EVENT_HANDLER_ATTRIBUTES.some(attribute => typeof interactiveElement[attribute] === 'function');
+}
+
+function hasKeyboardInteraction(element: Element): boolean {
+  if (!(element instanceof HTMLElement) || !element.hasAttribute('tabindex')) return false;
+  return element.tabIndex >= 0;
+}
+
+function isEditableSuperModeTarget(element: Element): boolean {
+  if (element instanceof HTMLInputElement) {
+    return !['button', 'submit', 'reset'].includes(element.type);
+  }
+  return element instanceof HTMLTextAreaElement
+    || element instanceof HTMLSelectElement
+    || (element instanceof HTMLElement && element.isContentEditable)
+    || element.matches('[role="textbox"], [role="searchbox"], [role="combobox"]');
+}
+
+function findPointerCursorControl(elements: Element[]): Element | null {
+  let pointerControl: Element | null = null;
+  let foundPointerCursor = false;
+
+  for (const element of elements) {
+    if (element === document.documentElement || element === document.body) break;
+    const usesPointerCursor = window.getComputedStyle(element).cursor === 'pointer';
+    if (!usesPointerCursor) {
+      if (foundPointerCursor) break;
+      continue;
+    }
+    foundPointerCursor = true;
+    pointerControl = element;
+  }
+  return pointerControl;
+}
+
+function getSuperModeControl(event: Event): Element | null {
+  if (!extensionEnabled || !superMode || !event.isTrusted || eventIsInsideAskChat(event)) return null;
+  const elements = getEventPath(event).filter((item): item is Element => item instanceof Element);
+  if (elements.some(isEditableSuperModeTarget)) return null;
+  const control = elements.find(element => temporarilySelectableSuperModeControls.has(element))
+    || elements.find(element => element.matches(SUPER_MODE_SEMANTIC_CONTROL_SELECTOR))
+    || elements.find(hasInlineInteraction)
+    || elements.find(hasKeyboardInteraction)
+    || findPointerCursorControl(elements);
+  return control && isVisibleControl(control) ? control : null;
+}
+
+function getSuperModeControlText(control: Element): string {
+  const visibleText = normalizeText((control as HTMLElement).innerText || '');
+  if (visibleText) return visibleText;
+  if (control instanceof HTMLInputElement) return normalizeText(control.value);
+
+  const labelledBy = control.getAttribute('aria-labelledby');
+  const rootNode = control.getRootNode();
+  const labelText = labelledBy
+    ?.split(/\s+/)
+    .map(id => {
+      if (rootNode instanceof Document || rootNode instanceof ShadowRoot) {
+        return getElementText(rootNode.getElementById(id));
+      }
+      return '';
+    })
+    .filter(Boolean)
+    .join(' ');
+  return normalizeText(
+    labelText
+    || control.getAttribute('aria-label')
+    || control.getAttribute('title')
+    || control.querySelector('img[alt]')?.getAttribute('alt')
+    || control.textContent
+    || ''
+  );
+}
+
+function selectionIntersectsControl(range: Range, control: Element): boolean {
   try {
-    const range = document.createRange();
-    range.selectNodeContents(button);
-    const selection = getRootSelection(button.getRootNode()) || window.getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-    return normalizeText(selection?.toString() || getElementText(button));
+    return control.contains(range.commonAncestorContainer) || range.intersectsNode(control);
   } catch {
-    // The button may have rerendered during the pointer gesture.
-    return getElementText(button);
+    return false;
   }
 }
 
-function scheduleSuperModeSelection(button: Element) {
+function getSelectionInsideControl(control: Element): ActiveSelection | null {
+  const candidates = [
+    getRootSelection(control.getRootNode()),
+    window.getSelection(),
+    document.getSelection?.()
+  ].filter(Boolean) as Selection[];
+  const seen = new Set<Selection>();
+
+  for (const selection of candidates) {
+    if (seen.has(selection)) continue;
+    seen.add(selection);
+    if (selection.isCollapsed || selection.rangeCount === 0) continue;
+    const range = selection.getRangeAt(0);
+    if (!selectionIntersectsControl(range, control)) continue;
+    const text = getSelectionText(selection, range);
+    if (text) return { selection, text, range };
+  }
+  return null;
+}
+
+function selectSuperModeControlText(control: Element): ActiveSelection | null {
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(control);
+    const selection = getRootSelection(control.getRootNode()) || window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    const selectedText = normalizeText(selection?.toString() || '');
+    const text = selectedText || getSuperModeControlText(control);
+    if (!text) return null;
+    const rect = control.getBoundingClientRect();
+    return {
+      selection: selection && !selection.isCollapsed && selectedText
+        ? selection
+        : createSyntheticSelection(range, text),
+      text,
+      range,
+      rect: {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
+function makeSuperModeControlSelectable(control: Element): () => void {
+  temporarilySelectableSuperModeControls.add(control);
+  const elements = [control, ...Array.from(control.querySelectorAll('*')).slice(0, 250)];
+  const properties = ['cursor', 'user-select', '-webkit-user-select', '-webkit-user-drag'];
+  const snapshots = elements.map(element => {
+    const htmlElement = element as HTMLElement;
+    const values = properties.map(property => ({
+      property,
+      value: htmlElement.style.getPropertyValue(property),
+      priority: htmlElement.style.getPropertyPriority(property)
+    }));
+    htmlElement.style.setProperty('cursor', 'text', 'important');
+    htmlElement.style.setProperty('user-select', 'text', 'important');
+    htmlElement.style.setProperty('-webkit-user-select', 'text', 'important');
+    htmlElement.style.setProperty('-webkit-user-drag', 'none', 'important');
+    return { htmlElement, values };
+  });
+
+  return () => {
+    temporarilySelectableSuperModeControls.delete(control);
+    for (const { htmlElement, values } of snapshots) {
+      for (const { property, value, priority } of values) {
+        if (value) htmlElement.style.setProperty(property, value, priority);
+        else htmlElement.style.removeProperty(property);
+      }
+    }
+  };
+}
+
+function scheduleSuperModeSelection(control: Element) {
   window.setTimeout(() => {
-    const selection = getRootSelection(button.getRootNode()) || window.getSelection();
-    const selectedText = normalizeText(selection?.toString() || '') || selectSuperModeButtonText(button);
-    if (!selectedText) return;
-    schedulePageSelection({ eventTarget: button, eventPath: [button], gesture: null, retry: true }, 0);
+    const activeSelection = getSelectionInsideControl(control) || selectSuperModeControlText(control);
+    if (!activeSelection) return;
+    schedulePageSelection({
+      eventTarget: control,
+      eventPath: [control],
+      gesture: null,
+      retry: false,
+      selectionOverride: activeSelection
+    }, 0);
   }, 0);
 }
 
 document.documentElement.addEventListener('pointerdown', (event) => {
-  const button = getSuperModeButton(event);
-  if (!button) return;
+  const control = getSuperModeControl(event);
+  if (!control) return;
+  activeSuperModeSelection?.restoreSelectableStyles();
   activeSuperModeSelection = {
     pointerId: event.pointerId,
-    button,
+    control,
     startX: event.clientX,
     startY: event.clientY,
     moved: false,
-    selectionScheduled: false
+    restoreSelectableStyles: makeSuperModeControlSelectable(control)
   };
   // Keep the browser's default pointer behavior so button text can be selected.
   // Stopping propagation is enough to keep page frameworks from handling the
@@ -1219,10 +1404,6 @@ document.documentElement.addEventListener('pointermove', (event) => {
   if (!active.moved && Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3) {
     active.moved = true;
   }
-  if (active.moved && !active.selectionScheduled) {
-    active.selectionScheduled = true;
-    scheduleSuperModeSelection(active.button);
-  }
   event.stopImmediatePropagation();
 }, true);
 
@@ -1232,29 +1413,28 @@ document.documentElement.addEventListener('pointerup', (event) => {
   active.moved ||= Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3;
   activeSuperModeSelection = null;
   event.stopImmediatePropagation();
-  if (!active.moved || active.selectionScheduled) return;
-
-  // Selection is finalized after pointerup. Let the native selection win; use
-  // the whole target as a fallback for sites whose styles suppress selection.
-  scheduleSuperModeSelection(active.button);
+  if (active.moved) scheduleSuperModeSelection(active.control);
+  window.setTimeout(active.restoreSelectableStyles, 0);
 }, true);
 
 document.documentElement.addEventListener('pointercancel', (event) => {
-  if (activeSuperModeSelection?.pointerId === event.pointerId) activeSuperModeSelection = null;
+  if (activeSuperModeSelection?.pointerId !== event.pointerId) return;
+  activeSuperModeSelection.restoreSelectableStyles();
+  activeSuperModeSelection = null;
 }, true);
 
 document.documentElement.addEventListener('mousedown', (event) => {
-  const button = getSuperModeButton(event);
-  if (!button) return;
+  const control = getSuperModeControl(event);
+  if (!control) return;
   // Some browsers and automation/accessibility paths emit only mouse events.
   // Keep a mouse-only fallback without replacing an active PointerEvent gesture.
   activeSuperModeSelection ||= {
     pointerId: -1,
-    button,
+    control,
     startX: event.clientX,
     startY: event.clientY,
     moved: false,
-    selectionScheduled: false
+    restoreSelectableStyles: makeSuperModeControlSelectable(control)
   };
   event.stopImmediatePropagation();
 }, true);
@@ -1265,10 +1445,6 @@ document.documentElement.addEventListener('mousemove', (event) => {
   if (!active.moved && Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3) {
     active.moved = true;
   }
-  if (active.moved && !active.selectionScheduled) {
-    active.selectionScheduled = true;
-    scheduleSuperModeSelection(active.button);
-  }
   event.stopImmediatePropagation();
 }, true);
 
@@ -1278,32 +1454,31 @@ document.documentElement.addEventListener('mouseup', (event) => {
   active.moved ||= Math.hypot(event.clientX - active.startX, event.clientY - active.startY) >= 3;
   activeSuperModeSelection = null;
   event.stopImmediatePropagation();
-  if (active.moved && !active.selectionScheduled) scheduleSuperModeSelection(active.button);
+  if (active.moved) scheduleSuperModeSelection(active.control);
+  window.setTimeout(active.restoreSelectableStyles, 0);
 }, true);
 
 document.documentElement.addEventListener('dblclick', (event) => {
-  const button = getSuperModeButton(event);
-  if (!button) return;
+  const control = getSuperModeControl(event);
+  if (!control) return;
   event.stopImmediatePropagation();
-  scheduleSuperModeSelection(button);
+  scheduleSuperModeSelection(control);
 }, true);
 
 document.documentElement.addEventListener('dragstart', (event) => {
-  const button = getSuperModeButton(event);
-  if (!button) return;
+  if (!getSuperModeControl(event)) return;
   event.preventDefault();
   event.stopImmediatePropagation();
-  scheduleSuperModeSelection(button);
 }, true);
 
 document.documentElement.addEventListener('click', (event) => {
-  if (!getSuperModeButton(event)) return;
+  if (!getSuperModeControl(event)) return;
   event.preventDefault();
   event.stopImmediatePropagation();
 }, true);
 
 document.documentElement.addEventListener('keydown', (event) => {
-  if (!getSuperModeButton(event) || (event.key !== 'Enter' && event.key !== ' ')) return;
+  if (!getSuperModeControl(event) || (event.key !== 'Enter' && event.key !== ' ')) return;
   event.preventDefault();
   event.stopImmediatePropagation();
 }, true);
@@ -1368,7 +1543,11 @@ document.addEventListener('keydown', (event) => {
   }
 }, true);
 
-window.addEventListener('blur', () => suppressedShortcutKeyups.clear());
+window.addEventListener('blur', () => {
+  suppressedShortcutKeyups.clear();
+  activeSuperModeSelection?.restoreSelectableStyles();
+  activeSuperModeSelection = null;
+});
 document.addEventListener('pointerdown', (event) => {
   if (!extensionEnabled) return;
   cancelPendingSelection();
