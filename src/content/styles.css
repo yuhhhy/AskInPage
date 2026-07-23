@@ -52,6 +52,14 @@ html.ask-chat-super-mode #ask-chat-selection-root [role="link"] {
   box-sizing: border-box;
 }
 
+.ask-chat-popover :where(button),
+.ask-chat-trigger :where(input) {
+  all: unset;
+  box-sizing: border-box;
+  color: inherit;
+  font: inherit;
+}
+
 .ask-chat-popover {
   position: fixed;
   z-index: 2147483647;
@@ -251,6 +259,9 @@ html.ask-chat-super-mode #ask-chat-selection-root [role="link"] {
 .ask-chat-header button {
   width: 26px;
   height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: 6px;
   background: transparent;
