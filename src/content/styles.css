@@ -13,10 +13,11 @@
   z-index: 2147483647;
   font-family: "Avenir Next", "Noto Sans SC", system-ui, sans-serif;
   font-size: 14px;
-  --ask-accent: #5817c7;
-  --ask-accent-soft: #f2edfc;
+  --ask-accent: #1268a8;
+  --ask-accent-soft: #e8f3fb;
 }
 
+#ask-chat-selection-root[data-theme="purple"] { --ask-accent: #5817c7; --ask-accent-soft: #f2edfc; }
 #ask-chat-selection-root[data-theme="blue"] { --ask-accent: #1268a8; --ask-accent-soft: #e8f3fb; }
 #ask-chat-selection-root[data-theme="green"] { --ask-accent: #14735a; --ask-accent-soft: #e8f5f0; }
 #ask-chat-selection-root[data-theme="orange"] { --ask-accent: #b55312; --ask-accent-soft: #fff1e6; }

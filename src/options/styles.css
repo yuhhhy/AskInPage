@@ -5,10 +5,10 @@
   --line: #e4e0e8;
   --paper: #faf9fb;
   --surface: #ffffff;
-  --accent: #5817c7;
-  --accent-dark: #4610a5;
-  --accent-text: #5817c7;
-  --accent-soft: #f2edfc;
+  --accent: #1268a8;
+  --accent-dark: #0b527f;
+  --accent-text: #1268a8;
+  --accent-soft: #e8f3fb;
   --label: #403c44;
   --control-border: #d8d3dc;
   --surface-hover: #f3f1f5;
@@ -39,6 +39,7 @@ body {
 
 button, input, textarea, select { font: inherit; }
 .settings-shell { width: min(100%, 960px); margin: 0 auto; padding: 56px 32px 36px; color: var(--ink); }
+.settings-shell[data-theme="purple"] { --accent: #5817c7; --accent-dark: #4610a5; --accent-text: #5817c7; --accent-soft: #f2edfc; }
 .settings-shell[data-theme="blue"] { --accent: #1268a8; --accent-dark: #0b527f; --accent-text: #1268a8; --accent-soft: #e8f3fb; }
 .settings-shell[data-theme="green"] { --accent: #14735a; --accent-dark: #0d5945; --accent-text: #14735a; --accent-soft: #e8f5f0; }
 .settings-shell[data-theme="orange"] { --accent: #b55312; --accent-dark: #8e3d09; --accent-text: #b55312; --accent-soft: #fff1e6; }

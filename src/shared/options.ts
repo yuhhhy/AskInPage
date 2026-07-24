@@ -54,7 +54,7 @@ export const DEFAULT_OPTIONS: ExtensionOptions = Object.freeze({
   colorMode: 'light',
   superMode: false,
   quickMode: false,
-  themeColor: 'purple',
+  themeColor: 'blue',
   connections: [DEFAULT_CONNECTION],
   activeConnectionId: DEFAULT_CONNECTION.id,
   temperature: 0.2,

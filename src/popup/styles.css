@@ -1,9 +1,9 @@
 :root {
   color-scheme: light;
-  --accent: #5817c7;
-  --accent-hover: #4610a5;
-  --accent-text: #5817c7;
-  --accent-soft: #f2edfc;
+  --accent: #1268a8;
+  --accent-hover: #0b527f;
+  --accent-text: #1268a8;
+  --accent-soft: #e8f3fb;
   --ink: #242128;
   --muted: #77717d;
   --line: #e5e1e9;
@@ -45,6 +45,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srg
   color: var(--ink);
 }
 
+.popup-shell[data-theme="purple"] { --accent: #5817c7; --accent-hover: #4610a5; --accent-text: #5817c7; --accent-soft: #f2edfc; }
 .popup-shell[data-theme="blue"] { --accent: #1268a8; --accent-hover: #0b527f; --accent-text: #1268a8; --accent-soft: #e8f3fb; }
 .popup-shell[data-theme="green"] { --accent: #14735a; --accent-hover: #0d5945; --accent-text: #14735a; --accent-soft: #e8f5f0; }
 .popup-shell[data-theme="orange"] { --accent: #b55312; --accent-hover: #8e3d09; --accent-text: #b55312; --accent-soft: #fff1e6; }

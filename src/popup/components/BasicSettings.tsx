@@ -18,8 +18,8 @@ interface BasicSettingsProps {
 }
 
 const THEMES: Array<{ value: ThemeColor; labelKey: string }> = [
-  { value: 'purple', labelKey: 'themePurple' },
   { value: 'blue', labelKey: 'themeBlue' },
+  { value: 'purple', labelKey: 'themePurple' },
   { value: 'green', labelKey: 'themeGreen' },
   { value: 'orange', labelKey: 'themeOrange' },
   { value: 'rose', labelKey: 'themeRose' }
