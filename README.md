@@ -1,5 +1,8 @@
 <h1 align="center">AskInPage</h1>
 
+<p align="center">
+  <strong>简体中文</strong> · <a href="./README_EN.md">English</a>
+</p>
 
 <p align="center">
   在任意网页选中文字，获得结合页面上下文的 AI 解释或翻译
