@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="./public/icons/icon-128.png" width="128" height="128" alt="AskInPage Logo">
+  <img src="./public/icons/icon-source.png" width="128" height="128" alt="AskInPage Logo">
 </p>
 
 
